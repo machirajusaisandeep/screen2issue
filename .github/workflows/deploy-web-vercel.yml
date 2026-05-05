@@ -1,0 +1,56 @@
+name: Deploy Web and PWA
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify browser build
+        run: npm run build:web
+
+      - name: Pull Vercel preview environment
+        if: github.event_name == 'pull_request'
+        run: npx vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      - name: Build Vercel preview output
+        if: github.event_name == 'pull_request'
+        run: npx vercel build --token="$VERCEL_TOKEN"
+
+      - name: Deploy preview
+        if: github.event_name == 'pull_request'
+        run: npx vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+
+      - name: Pull Vercel production environment
+        if: github.event_name == 'push'
+        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build Vercel production output
+        if: github.event_name == 'push'
+        run: npx vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy production
+        if: github.event_name == 'push'
+        run: npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"

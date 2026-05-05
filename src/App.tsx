@@ -7,8 +7,12 @@ import { ProcessingScreen } from '@/components/processing/ProcessingScreen'
 import { TimelineScreen } from '@/components/timeline/TimelineScreen'
 import { EnhancementsScreen } from '@/components/enhancements/EnhancementsScreen'
 import { ExportScreen } from '@/components/export/ExportScreen'
+import { waitForLocalEngineHealth } from '@/lib/runtime/desktopLocalEngine'
+import { resolveRuntimeCapabilities, type RuntimeCapabilities } from '@/lib/runtime/capabilities'
 import type { AppStep, BugReport, CursorEvent, ExtractedFrame } from '@/types/report'
 import { captureEnvironmentMetadata } from '@/lib/report/captureEnvironment'
+import type { LocalEngineStatus } from '@/lib/localEngine/types'
+import { startBundledLocalEngine } from '@/lib/runtime/desktopLocalEngine'
 
 type Theme = 'dark' | 'light'
 type Accent = 'amber' | 'cyan' | 'lime'
@@ -27,7 +31,7 @@ const HINTS: Record<AppStep, { k: string; l: string }[]> = {
   export:       [{ k: '⌘C', l: 'copy AI prompt' }, { k: '1–5', l: 'jump' }],
 }
 
-function makeEmptyReport(file: File): BugReport {
+function makeEmptyReport(file: File, localEngineStatus: LocalEngineStatus): BugReport {
   return {
     title: '',
     summary: '',
@@ -44,7 +48,7 @@ function makeEmptyReport(file: File): BugReport {
     browserCursorEvents: [],
     enhancedCursorEvents: [],
     transcriptSegments: [],
-    localEngineStatus: { state: 'idle' },
+    localEngineStatus,
     enhancementWarnings: [],
   }
 }
@@ -55,11 +59,15 @@ interface ProcessingResult {
 }
 
 export default function App() {
+  const [runtimeCapabilities] = useState<RuntimeCapabilities>(() => resolveRuntimeCapabilities())
   const [step, setStep]       = useState<AppStep>('upload')
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [frames, setFrames]   = useState<ExtractedFrame[]>([])
   const [report, setReport]   = useState<BugReport | null>(null)
   const [toast, setToast]     = useState<string | null>(null)
+  const [desktopEngineStatus, setDesktopEngineStatus] = useState<LocalEngineStatus>(
+    runtimeCapabilities.supportsBundledLocalEngine ? { state: 'starting' } : { state: 'idle' },
+  )
 
   // Theme / accent / density — driven by data-* attrs on <html>
   const [theme, setTheme]     = useState<Theme>('dark')
@@ -76,6 +84,63 @@ export default function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-density', density)
   }, [density])
+
+  const syncDesktopEngineStatus = useCallback((status: LocalEngineStatus) => {
+    setDesktopEngineStatus(status)
+    setReport((current) => current ? { ...current, localEngineStatus: status } : current)
+  }, [])
+
+  useEffect(() => {
+    if (!runtimeCapabilities.supportsBundledLocalEngine) return
+
+    let cancelled = false
+
+    async function bootDesktopEngine() {
+      syncDesktopEngineStatus({ state: 'starting' })
+
+      try {
+        const launchResult = await startBundledLocalEngine(runtimeCapabilities)
+        if (cancelled) return
+
+        if (launchResult.status === 'port_conflict') {
+          syncDesktopEngineStatus({
+            state: 'port_conflict',
+            lastError:
+              launchResult.message ??
+              'Another process is already using the local engine port (127.0.0.1:8765).',
+            lastCheckedAt: new Date().toISOString(),
+          })
+          return
+        }
+
+        const health = await waitForLocalEngineHealth()
+        if (cancelled) return
+
+        syncDesktopEngineStatus({
+          state: 'connected',
+          health,
+          lastCheckedAt: new Date().toISOString(),
+        })
+      } catch (error) {
+        if (cancelled) return
+
+        syncDesktopEngineStatus({
+          state: 'error',
+          lastError:
+            error instanceof Error
+              ? error.message
+              : 'The bundled local engine could not be started.',
+          lastCheckedAt: new Date().toISOString(),
+        })
+      }
+    }
+
+    void bootDesktopEngine()
+
+    return () => {
+      cancelled = true
+    }
+  }, [runtimeCapabilities, syncDesktopEngineStatus])
 
   function jumpTo(idx: number) {
     const target = STEP_KEYS[idx]
@@ -105,9 +170,9 @@ export default function App() {
 
   const handleFileSelected = useCallback((file: File) => {
     setVideoFile(file)
-    setReport(makeEmptyReport(file))
+    setReport(makeEmptyReport(file, desktopEngineStatus))
     setStep('processing')
-  }, [])
+  }, [desktopEngineStatus])
 
   const handleProcessingComplete = useCallback(({ frames: processedFrames, cursorEvents }: ProcessingResult) => {
     setFrames(processedFrames)
@@ -117,7 +182,7 @@ export default function App() {
         browserCursorEvents: cursorEvents,
         enhancedCursorEvents: [],
         transcriptSegments: [],
-        localEngineStatus: { state: 'idle' },
+        localEngineStatus: desktopEngineStatus,
         enhancementWarnings: [],
         frames: processedFrames,
         videoDurationMs:
@@ -127,7 +192,7 @@ export default function App() {
       } : prev,
     )
     setStep('timeline')
-  }, [])
+  }, [desktopEngineStatus])
 
   const handleProcessingError = useCallback(() => {
     setTimeout(() => setStep('upload'), 4000)
@@ -147,10 +212,17 @@ export default function App() {
 
   return (
     <>
-      <AppBar step={STEP_INDEX[step]} onJump={jumpTo} />
+      <AppBar
+        step={STEP_INDEX[step]}
+        onJump={jumpTo}
+        runtimeCapabilities={runtimeCapabilities}
+      />
 
       {step === 'upload' && (
-        <UploadScreen onFileSelected={handleFileSelected} />
+        <UploadScreen
+          onFileSelected={handleFileSelected}
+          runtimeCapabilities={runtimeCapabilities}
+        />
       )}
       {step === 'processing' && videoFile && (
         <ProcessingScreen
@@ -172,6 +244,7 @@ export default function App() {
         <EnhancementsScreen
           report={report}
           videoFile={videoFile}
+          runtimeCapabilities={runtimeCapabilities}
           onBack={() => setStep('timeline')}
           onNext={() => setStep('export')}
           onReportChange={handleReportChange}
@@ -186,7 +259,7 @@ export default function App() {
         />
       )}
 
-      <HintBar items={HINTS[step]} />
+      <HintBar items={HINTS[step]} runtimeCapabilities={runtimeCapabilities} />
 
       {/* Tweaks panel */}
       <button

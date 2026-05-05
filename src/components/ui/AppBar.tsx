@@ -1,11 +1,14 @@
+import { getSurfaceLabel, type RuntimeCapabilities } from '@/lib/runtime/capabilities'
+
 interface AppBarProps {
   step: number
   onJump: (step: number) => void
+  runtimeCapabilities: RuntimeCapabilities
 }
 
 const STEPS = ['Upload', 'Process', 'Review', 'Enhance', 'Export']
 
-export function AppBar({ step, onJump }: AppBarProps) {
+export function AppBar({ step, onJump, runtimeCapabilities }: AppBarProps) {
   return (
     <header className="appbar">
       <div className="brand" onClick={() => onJump(0)}>
@@ -33,7 +36,11 @@ export function AppBar({ step, onJump }: AppBarProps) {
 
       <div className="privacy-badge">
         <span className="privacy-dot" aria-hidden="true" />
-        <span>local-first · no cloud upload</span>
+        <span>
+          {getSurfaceLabel(runtimeCapabilities.surface)}
+          {' · '}
+          {runtimeCapabilities.supportsBundledLocalEngine ? 'bundled local engine' : 'browser-only'}
+        </span>
       </div>
     </header>
   )

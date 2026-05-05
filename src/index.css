@@ -224,6 +224,19 @@ textarea { resize: vertical; }
 }
 .upload-foot-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-3); }
 .upload-foot-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--fg-4); }
+.install-callout {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 14px 16px; border-radius: var(--radius);
+  border: 1px solid color-mix(in oklab, var(--accent) 28%, var(--border));
+  background: color-mix(in oklab, var(--accent-soft) 42%, var(--bg-2));
+}
+.install-callout-copy { display: flex; flex-direction: column; gap: 4px; }
+.install-callout-title { font-size: 13px; font-weight: 600; color: var(--fg-1); }
+.install-callout-text { font-size: 12.5px; color: var(--fg-2); text-wrap: pretty; }
+.install-callout-state {
+  color: var(--accent); font-size: 11px; letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .privacy-note {
   padding: 12px 14px; border-radius: var(--radius);
   border: 1px solid var(--border);
@@ -359,13 +372,18 @@ textarea { resize: vertical; }
   border-color: color-mix(in oklab, var(--success) 35%, var(--border));
   color: var(--success);
 }
+.analysis-pill-status.state-starting {
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
+  color: var(--accent);
+}
 .analysis-pill-status.state-enhancing,
 .analysis-pill-status.state-checking {
   border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
   color: var(--accent);
 }
 .analysis-pill-status.state-error,
-.analysis-pill-status.state-not_connected {
+.analysis-pill-status.state-not_connected,
+.analysis-pill-status.state-port_conflict {
   border-color: color-mix(in oklab, var(--danger) 35%, var(--border));
   color: var(--danger);
 }
@@ -743,6 +761,7 @@ textarea { resize: vertical; }
 @media (max-width: 680px) {
   :root { --pad-screen: 16px; }
   .upload-title { font-size: 28px; }
+  .install-callout { align-items: flex-start; flex-direction: column; }
   .appbar .steps { display: none; }
   .frame-card { grid-template-columns: 1fr; }
   .analysis-field-row { grid-template-columns: 1fr; }

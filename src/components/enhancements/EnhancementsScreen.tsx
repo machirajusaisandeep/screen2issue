@@ -18,10 +18,12 @@ import {
   setLocalEngineState,
 } from '@/lib/localEngine/merge'
 import { countFramesWithEffectiveOcr } from '@/lib/report/reportData'
+import type { RuntimeCapabilities } from '@/lib/runtime/capabilities'
 
 interface EnhancementsScreenProps {
   report: BugReport
   videoFile: File | null
+  runtimeCapabilities: RuntimeCapabilities
   onBack: () => void
   onNext: () => void
   onReportChange: (report: BugReport) => void
@@ -32,6 +34,7 @@ type LocalAction = 'check' | 'enhance' | 'transcribe' | null
 export function EnhancementsScreen({
   report,
   videoFile,
+  runtimeCapabilities,
   onBack,
   onNext,
   onReportChange,
@@ -241,18 +244,43 @@ export function EnhancementsScreen({
             </div>
           </div>
 
-          <LocalEnginePanel
-            status={report.localEngineStatus}
-            frameCount={report.frames.length}
-            transcriptCount={report.transcriptSegments.length}
-            videoName={report.videoName}
-            busyAction={busyAction}
-            error={localEngineError}
-            message={localEngineMessage}
-            onCheck={handleCheckLocalEngine}
-            onEnhance={handleEnhanceDetection}
-            onTranscribe={handleTranscribeAudio}
-          />
+          {runtimeCapabilities.showLocalEngineActions ? (
+            <LocalEnginePanel
+              status={report.localEngineStatus}
+              frameCount={report.frames.length}
+              transcriptCount={report.transcriptSegments.length}
+              videoName={report.videoName}
+              busyAction={busyAction}
+              error={localEngineError}
+              message={localEngineMessage}
+              onCheck={handleCheckLocalEngine}
+              onEnhance={handleEnhanceDetection}
+              onTranscribe={handleTranscribeAudio}
+            />
+          ) : (
+            <div className="analysis-card">
+              <div className="analysis-card-head">
+                <div>
+                  <h3>Desktop-Only Local Engine</h3>
+                  <p>
+                    The hosted {runtimeCapabilities.surface === 'pwa' ? 'PWA' : 'web app'} ships the
+                    browser-only workflow publicly. Enhanced OCR, local transcription, and bundled
+                    helper startup are available in the Mac app release.
+                  </p>
+                </div>
+                <div className="analysis-pill mono">browser-only release</div>
+              </div>
+              <div className="analysis-warning">
+                Public web and PWA releases keep step 4 focused on browser-safe enhancements like
+                HAR import. Install the Mac app when you want the bundled local engine workflow.
+              </div>
+              <div className="analysis-stats mono">
+                <span>HAR import is still available here</span>
+                <span>browser OCR and cursor detection already ran in step 2</span>
+                <span>desktop surface unlocks transcript + enhanced OCR</span>
+              </div>
+            </div>
+          )}
 
           <HarUpload
             fileName={report.harSummary?.fileName}

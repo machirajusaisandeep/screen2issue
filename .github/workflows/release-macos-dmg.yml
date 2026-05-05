@@ -1,0 +1,57 @@
+name: Release macOS DMG
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-dmg:
+    runs-on: macos-14
+
+    env:
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY_PATH }}
+      SCREEN2ISSUE_WHISPER_MODEL_PATH: ${{ secrets.SCREEN2ISSUE_WHISPER_MODEL_PATH }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install native binaries
+        run: brew install ffmpeg tesseract
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Prepare python environment
+        run: |
+          python3 -m venv python-engine/.venv
+          source python-engine/.venv/bin/activate
+          pip install -r python-engine/requirements-desktop.txt
+
+      - name: Build desktop sidecar
+        run: npm run build:desktop:sidecar
+
+      - name: Build signed DMG
+        run: npm run build:desktop:mac
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: screen2issue-macos-dmg
+          path: src-tauri/target/release/bundle/dmg/*.dmg

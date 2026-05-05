@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 
 import cv2
 import numpy as np
 import pytesseract
 from pytesseract import Output
+
+if os.environ.get("SCREEN2ISSUE_TESSERACT_BINARY"):
+    pytesseract.pytesseract.tesseract_cmd = os.environ["SCREEN2ISSUE_TESSERACT_BINARY"]
 
 
 @dataclass

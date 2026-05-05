@@ -8,8 +8,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/*.png', 'icons/*.svg'],
+      includeAssets: ['favicon.svg', 'icons/*.png', 'icons/*.svg'],
       manifest: {
+        id: '/',
         name: 'Screen2Issue',
         short_name: 'Screen2Issue',
         description: 'Convert screen recordings into AI-ready bug reports locally.',
@@ -18,16 +19,27 @@ export default defineConfig({
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
+        display_override: ['window-controls-overlay', 'standalone', 'browser'],
+        orientation: 'portrait-primary',
+        categories: ['developer', 'productivity', 'utilities'],
         icons: [
           {
             src: 'icons/icon-192.png',
             sizes: '192x192',
             type: 'image/png',
+            purpose: 'any',
           },
           {
             src: 'icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'icons/icon-512-maskable.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },
@@ -35,6 +47,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
         globIgnores: ['**/tesseract/**/*'],
+        navigateFallback: '/index.html',
         runtimeCaching: [
           {
             urlPattern: /\/tesseract\/.*\.(?:js|wasm|gz)$/i,

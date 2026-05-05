@@ -26,6 +26,17 @@ The transcription model uses `faster-whisper` with `small.en`. In phase 1 it may
 local Faster Whisper cache the first time it is used. Packaging that model into the app is the
 phase-2 job.
 
+## Desktop packaging
+
+The repo also includes desktop packaging scaffolding for the macOS release path:
+
+- `requirements-desktop.txt` adds PyInstaller
+- `packaging/desktop_entry.py` is the frozen helper entrypoint
+- `scripts/build-mac-sidecar.sh` builds the helper and copies bundled resources into `src-tauri/resources/local-engine`
+
+For the desktop sidecar build, set `SCREEN2ISSUE_WHISPER_MODEL_PATH` to a downloaded `small.en`
+model directory before running the build script.
+
 ## Install
 
 ```bash

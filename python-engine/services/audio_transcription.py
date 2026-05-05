@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from functools import lru_cache
+import os
 from pathlib import Path
 
 from faster_whisper import WhisperModel
@@ -57,7 +58,7 @@ def transcribe_video_file(video_path: Path) -> TranscriptionResponse:
 
 
 def detect_audio_stream(video_path: Path) -> bool:
-    ffprobe_path = shutil.which("ffprobe")
+    ffprobe_path = os.environ.get("SCREEN2ISSUE_FFPROBE_BINARY") or shutil.which("ffprobe")
     if not ffprobe_path:
         return True
 
@@ -84,4 +85,5 @@ def detect_audio_stream(video_path: Path) -> bool:
 
 @lru_cache(maxsize=1)
 def get_transcription_model() -> WhisperModel:
-    return WhisperModel("small.en", device="cpu", compute_type="int8")
+    model_path = os.environ.get("SCREEN2ISSUE_WHISPER_MODEL_PATH", "small.en")
+    return WhisperModel(model_path, device="cpu", compute_type="int8")

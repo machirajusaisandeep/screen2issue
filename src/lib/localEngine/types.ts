@@ -49,11 +49,13 @@ export type LocalEngineHealth = {
 
 export type LocalEngineState =
   | 'idle'
+  | 'starting'
   | 'checking'
   | 'not_connected'
   | 'connected'
   | 'enhancing'
   | 'complete'
+  | 'port_conflict'
   | 'error'
 
 export type LocalEngineStatus = {

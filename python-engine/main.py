@@ -22,13 +22,23 @@ from services.tempfiles import managed_temp_dir, save_upload_file
 logger = logging.getLogger("screen2issue.local_engine")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 
+ALLOWED_ORIGINS = [
+    "http://127.0.0.1",
+    "http://127.0.0.1:5173",
+    "http://localhost",
+    "http://localhost:5173",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+    "tauri://localhost",
+]
+
 app = FastAPI(title="Screen2Issue Local Engine", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Accept", "Content-Type"],
 )
 
 

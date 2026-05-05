@@ -113,10 +113,12 @@ function getStatusLabel(status: LocalEngineStatus): string {
     return `connected · ${status.health.engine}`
   }
 
+  if (status.state === 'starting') return 'starting'
   if (status.state === 'complete') return 'complete'
   if (status.state === 'checking') return 'checking'
   if (status.state === 'enhancing') return 'running'
   if (status.state === 'not_connected') return 'not connected'
+  if (status.state === 'port_conflict') return 'port conflict'
   if (status.state === 'error') return 'error'
   return 'idle'
 }

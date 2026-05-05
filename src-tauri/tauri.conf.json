@@ -1,0 +1,75 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Screen2Issue",
+  "version": "0.1.0",
+  "identifier": "com.machirajusaisandeep.screen2issue",
+  "build": {
+    "beforeBuildCommand": "npm run build:web",
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "security": {
+      "capabilities": [
+        "main-capability"
+      ],
+      "csp": null
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Screen2Issue",
+        "width": 1440,
+        "height": 960,
+        "minWidth": 1200,
+        "minHeight": 780,
+        "resizable": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "category": "DeveloperTool",
+    "copyright": "© 2026 Sandeep Machiraju",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns"
+    ],
+    "resources": [
+      "resources/local-engine/**",
+      "assets/dmg-background.png"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "hardenedRuntime": true,
+      "entitlements": "./Entitlements.plist",
+      "infoPlist": "./Info.plist",
+      "dmg": {
+        "background": "./assets/dmg-background.png",
+        "windowSize": {
+          "width": 660,
+          "height": 420
+        },
+        "windowPosition": {
+          "x": 200,
+          "y": 180
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 220
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 220
+        }
+      }
+    }
+  }
+}

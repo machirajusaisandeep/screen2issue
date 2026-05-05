@@ -20,7 +20,7 @@ Screen2Issue is not a generic video-to-PDF converter and not a full bug-reportin
 
 It solves one focused problem:
 
-When someone sends you a screen recording of a bug, Screen2Issue turns that video into a searchable, AI-ready debugging report locally in your browser.
+When someone sends you a screen recording of a bug, Screen2Issue turns that video into a searchable, AI-ready debugging report locally in the browser or on-device in the Mac app.
 
 ## Local-First Privacy Promise
 
@@ -45,14 +45,16 @@ When someone sends you a screen recording of a bug, Screen2Issue turns that vide
 - Sanitized JSON metadata export
 - ZIP export with `bug-report.md`, `metadata.json`, and PNG screenshots
 - Installable PWA with offline app shell support
+- Release scaffolding for Vercel web deploys and a Tauri-based macOS DMG build
 
 ## How To Run Locally
 
 **Requirements:** Node.js 20+, npm
 
 ```bash
-git clone https://github.com/your-org/screen2issue
+git clone https://github.com/machirajusaisandeep/screen2issue.git
 cd screen2issue
+nvm use
 npm install
 npm run dev
 ```
@@ -73,6 +75,17 @@ uvicorn main:app --host 127.0.0.1 --port 8765 --reload
 ```
 
 Phase 1 assumes local `ffmpeg` / `ffprobe` and Tesseract OCR are already installed.
+
+### Release surfaces
+
+- `npm run release:web`: builds the hosted browser-only web app for Vercel
+- `npm run release:pwa`: builds the same browser-only app with the PWA manifest/service worker
+- `npm run release:desktop:dmg`: builds the web bundle, prepares the bundled local engine resources, and then runs the Tauri macOS bundler
+
+The public web app and PWA intentionally hide the local-engine controls in v1. The bundled local
+engine flow is reserved for the macOS app build.
+
+See [docs/release.md](docs/release.md) for the GitHub import, Vercel, and DMG release checklist.
 
 ### Production build
 
@@ -191,6 +204,14 @@ HAR files may still contain sensitive URLs, query parameters, tokens, emails, or
 - `Enhance Detection Locally` sends all extracted frames plus ids, timestamps, and included flags.
 - `Transcribe Audio Locally` sends the original uploaded video file.
 - Audio transcription is English-only in v1.
+- The macOS desktop release scaffolding auto-starts a bundled helper on app launch instead of asking end users to run `uvicorn`.
+
+## Desktop Release Notes
+
+- The repo now includes a Tauri wrapper in `src-tauri/` for the macOS DMG release path.
+- Desktop packaging expects a bundled local engine, `ffmpeg`, `ffprobe`, Tesseract, and the Whisper `small.en` model.
+- Before running `npm run release:desktop:dmg`, set `SCREEN2ISSUE_WHISPER_MODEL_PATH` to a downloaded `small.en` model directory.
+- GitHub Actions includes a macOS DMG workflow scaffold that expects Apple signing and notarization secrets.
 
 ## PWA / Offline Behavior
 
@@ -206,11 +227,11 @@ HAR files may still contain sensitive URLs, query parameters, tokens, emails, or
 - Better cursor/click heuristics
 - More OCR controls and cancellation
 - Better HAR-to-timeline correlation
-- Local-engine packaging so end users do not need separate installs
+- Finishing the bundled desktop sidecar pipeline and notarized DMG credentials wiring
 
 ### Later
 
-- Electron / Tauri desktop packaging
+- Windows and Linux desktop packaging
 - Additional local analysis modules in the Enhancements step
 - Optional local AI integration
 
