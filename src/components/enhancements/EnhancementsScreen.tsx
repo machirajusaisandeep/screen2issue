@@ -17,13 +17,22 @@ import {
   applyTranscriptionResult,
   setLocalEngineState,
 } from '@/lib/localEngine/merge'
-import { countFramesWithEffectiveOcr } from '@/lib/report/reportData'
+import {
+  countFramesWithEffectiveOcr,
+  getEffectiveFrameOcr,
+  getSuspiciousHarEntries,
+  formatHarEntryLabel,
+} from '@/lib/report/reportData'
+import { formatTimestamp } from '@/lib/video/formatTimestamp'
 import type { RuntimeCapabilities } from '@/lib/runtime/capabilities'
+import { callAI, AIError } from '@/lib/ai/client'
+import type { AISettings } from '@/lib/ai/types'
 
 interface EnhancementsScreenProps {
   report: BugReport
   videoFile: File | null
   runtimeCapabilities: RuntimeCapabilities
+  aiSettings: AISettings
   onBack: () => void
   onNext: () => void
   onReportChange: (report: BugReport) => void
@@ -35,6 +44,7 @@ export function EnhancementsScreen({
   report,
   videoFile,
   runtimeCapabilities,
+  aiSettings,
   onBack,
   onNext,
   onReportChange,
@@ -43,6 +53,9 @@ export function EnhancementsScreen({
   const [localEngineError, setLocalEngineError] = useState<string | null>(null)
   const [localEngineMessage, setLocalEngineMessage] = useState<string | null>(null)
   const [busyAction, setBusyAction] = useState<LocalAction>(null)
+  const [aiBusyAction, setAiBusyAction] = useState<'activity' | 'har' | 'transcript' | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiMessage, setAiMessage] = useState<string | null>(null)
   const reportRef = useRef(report)
 
   useEffect(() => {
@@ -183,6 +196,91 @@ export function EnhancementsScreen({
     }
   }
 
+  async function handleAnalyzeActivity() {
+    setAiBusyAction('activity')
+    setAiError(null)
+    setAiMessage(null)
+    try {
+      const includedFrames = reportRef.current.frames.filter((f) => f.included)
+      const framesContext = includedFrames
+        .map((f, i) => {
+          const ocr = getEffectiveFrameOcr(f)
+          return `Frame ${i + 1} at ${formatTimestamp(f.timestampMs)}:${f.note ? ` ${f.note}` : ''}${ocr.text ? `\nVisible text: ${ocr.text}` : ''}`
+        })
+        .join('\n\n')
+      const cursorSummary = `${reportRef.current.browserCursorEvents.length} browser cursor events, ${reportRef.current.enhancedCursorEvents.length} enhanced cursor events`
+      const transcriptText =
+        reportRef.current.transcriptSegments.length > 0
+          ? reportRef.current.transcriptSegments.map((s) => s.text).join(' ')
+          : 'No transcript available.'
+
+      const result = await callAI({
+        settings: aiSettings,
+        systemPrompt:
+          'You are analyzing a screen recording session for a bug report. Summarize what the user was doing based on the frame descriptions, cursor events, and transcript.',
+        userPrompt: `Frames:\n${framesContext}\n\nCursor events: ${cursorSummary}\n\nTranscript: ${transcriptText}\n\nPlease summarize the user activity in 2–4 sentences.`,
+      })
+      commitReport({ ...reportRef.current, aiActivitySummary: result.text })
+      setAiMessage('Activity summary generated.')
+    } catch (error) {
+      setAiError(error instanceof AIError ? error.message : 'Activity analysis failed.')
+    } finally {
+      setAiBusyAction(null)
+    }
+  }
+
+  async function handleAnalyzeHar() {
+    if (!reportRef.current.harSummary) return
+    setAiBusyAction('har')
+    setAiError(null)
+    setAiMessage(null)
+    try {
+      const suspicious = getSuspiciousHarEntries(reportRef.current)
+        .slice(0, 30)
+        .map((e) => formatHarEntryLabel(e))
+        .join('\n')
+      const { totalRequests, errorCount, slowRequestCount } = reportRef.current.harSummary
+      const summary = `Total: ${totalRequests} requests, ${errorCount} errors, ${slowRequestCount} slow.`
+
+      const result = await callAI({
+        settings: aiSettings,
+        systemPrompt:
+          'You are analyzing network traffic from a HAR file for a bug report. Identify patterns, errors, and issues.',
+        userPrompt: `HAR Summary: ${summary}\n\nSuspicious requests:\n${suspicious || '(none)'}\n\nPlease identify the most significant issues and patterns in 3–5 bullet points.`,
+      })
+      commitReport({ ...reportRef.current, aiHarInsights: result.text })
+      setAiMessage('HAR analysis complete.')
+    } catch (error) {
+      setAiError(error instanceof AIError ? error.message : 'HAR analysis failed.')
+    } finally {
+      setAiBusyAction(null)
+    }
+  }
+
+  async function handleAnalyzeTranscript() {
+    setAiBusyAction('transcript')
+    setAiError(null)
+    setAiMessage(null)
+    try {
+      const transcriptText = reportRef.current.transcriptSegments
+        .map((s) => `[${formatTimestamp(s.startMs)}] ${s.text}`)
+        .join('\n')
+
+      const result = await callAI({
+        settings: aiSettings,
+        systemPrompt:
+          'You are analyzing an audio transcript from a screen recording. Summarize what was communicated.',
+        userPrompt: `Transcript:\n${transcriptText}\n\nPlease summarize what was communicated in 2–3 sentences.`,
+      })
+      commitReport({ ...reportRef.current, aiTranscriptInsights: result.text })
+      setAiMessage('Transcript analysis complete.')
+    } catch (error) {
+      setAiError(error instanceof AIError ? error.message : 'Transcript analysis failed.')
+    } finally {
+      setAiBusyAction(null)
+    }
+  }
+
   function handleLocalEngineFailure(error: unknown, fallbackMessage: string) {
     const message = error instanceof Error ? error.message : fallbackMessage
     const state =
@@ -291,6 +389,73 @@ export function EnhancementsScreen({
           />
 
           <TranscriptPanel segments={report.transcriptSegments} />
+
+          <div className="analysis-card analysis-card-callout">
+            <div className="analysis-card-head">
+              <div>
+                <h3>AI Analysis</h3>
+                <p>
+                  Use your configured AI provider to understand user activity, analyze network
+                  traffic, and summarize the transcript. Calls go directly from your browser
+                  to the provider API — nothing is proxied.
+                </p>
+              </div>
+              <div className="analysis-pill mono">{aiSettings.provider}</div>
+            </div>
+            <div className="analysis-actions">
+              <button
+                className="btn btn-primary"
+                onClick={handleAnalyzeActivity}
+                disabled={aiBusyAction !== null}
+              >
+                {aiBusyAction === 'activity' ? 'Analyzing…' : 'Understand Activity with AI'}
+              </button>
+              {report.harSummary && (
+                <button
+                  className="btn"
+                  onClick={handleAnalyzeHar}
+                  disabled={aiBusyAction !== null}
+                >
+                  {aiBusyAction === 'har' ? 'Analyzing…' : 'Analyze HAR with AI'}
+                </button>
+              )}
+              {report.transcriptSegments.length > 0 && (
+                <button
+                  className="btn"
+                  onClick={handleAnalyzeTranscript}
+                  disabled={aiBusyAction !== null}
+                >
+                  {aiBusyAction === 'transcript' ? 'Analyzing…' : 'Analyze Transcript with AI'}
+                </button>
+              )}
+            </div>
+            {aiMessage && <div className="analysis-success">{aiMessage}</div>}
+            {aiError && <div className="analysis-error">{aiError}</div>}
+            {report.aiActivitySummary && (
+              <div className="frame-subsection">
+                <div className="frame-subsection-head"><span className="mono">activity summary</span></div>
+                <div className="frame-related-list">
+                  <div className="frame-related-item">{report.aiActivitySummary}</div>
+                </div>
+              </div>
+            )}
+            {report.aiHarInsights && (
+              <div className="frame-subsection">
+                <div className="frame-subsection-head"><span className="mono">har insights</span></div>
+                <div className="frame-related-list">
+                  <div className="frame-related-item">{report.aiHarInsights}</div>
+                </div>
+              </div>
+            )}
+            {report.aiTranscriptInsights && (
+              <div className="frame-subsection">
+                <div className="frame-subsection-head"><span className="mono">transcript insights</span></div>
+                <div className="frame-related-list">
+                  <div className="frame-related-item">{report.aiTranscriptInsights}</div>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="analysis-card">
             <div className="analysis-card-head">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useEffectEvent, useState } from 'react'
 import { AppBar } from '@/components/ui/AppBar'
 import { HintBar } from '@/components/ui/HintBar'
 import { Toast } from '@/components/ui/Toast'
+import { AISettingsModal } from '@/components/ui/AISettingsModal'
 import { UploadScreen } from '@/components/upload/UploadScreen'
 import { ProcessingScreen } from '@/components/processing/ProcessingScreen'
 import { TimelineScreen } from '@/components/timeline/TimelineScreen'
@@ -13,6 +14,7 @@ import type { AppStep, BugReport, CursorEvent, ExtractedFrame } from '@/types/re
 import { captureEnvironmentMetadata } from '@/lib/report/captureEnvironment'
 import type { LocalEngineStatus } from '@/lib/localEngine/types'
 import { startBundledLocalEngine } from '@/lib/runtime/desktopLocalEngine'
+import { useAiSettings } from '@/hooks/useAiSettings'
 
 type Theme = 'dark' | 'light'
 type Accent = 'amber' | 'cyan' | 'lime'
@@ -60,6 +62,8 @@ interface ProcessingResult {
 
 export default function App() {
   const [runtimeCapabilities] = useState<RuntimeCapabilities>(() => resolveRuntimeCapabilities())
+  const { settings: aiSettings, saveSettings: saveAiSettings } = useAiSettings()
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [step, setStep]       = useState<AppStep>('upload')
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [frames, setFrames]   = useState<ExtractedFrame[]>([])
@@ -216,6 +220,7 @@ export default function App() {
         step={STEP_INDEX[step]}
         onJump={jumpTo}
         runtimeCapabilities={runtimeCapabilities}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       {step === 'upload' && (
@@ -235,6 +240,7 @@ export default function App() {
         <TimelineScreen
           frames={frames}
           report={report}
+          aiSettings={aiSettings}
           onChange={handleFramesChange}
           onReportChange={handleReportChange}
           onNext={() => setStep('enhancements')}
@@ -245,6 +251,7 @@ export default function App() {
           report={report}
           videoFile={videoFile}
           runtimeCapabilities={runtimeCapabilities}
+          aiSettings={aiSettings}
           onBack={() => setStep('timeline')}
           onNext={() => setStep('export')}
           onReportChange={handleReportChange}
@@ -253,6 +260,7 @@ export default function App() {
       {step === 'export' && report && (
         <ExportScreen
           report={report}
+          aiSettings={aiSettings}
           onChange={handleReportChange}
           onBack={() => setStep('enhancements')}
           onToast={showToast}
@@ -320,6 +328,13 @@ export default function App() {
       )}
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+
+      <AISettingsModal
+        open={settingsOpen}
+        initialSettings={aiSettings}
+        onSave={saveAiSettings}
+        onClose={() => setSettingsOpen(false)}
+      />
     </>
   )
 }

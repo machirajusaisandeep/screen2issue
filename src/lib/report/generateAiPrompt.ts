@@ -8,7 +8,13 @@ export function generateAiPrompt(report: BugReport): string {
     .map((frame) => {
       const lines = [`- ${frame.timestamp} — ${frame.note || '(no note)'}`]
 
-      if (frame.effectiveOcrText) {
+      if (frame.aiScreenshotAnalysis) {
+        lines.push(`  AI screenshot analysis: ${frame.aiScreenshotAnalysis}`)
+      }
+
+      if (frame.aiOcrCorrection) {
+        lines.push(`  AI OCR correction: ${frame.aiOcrCorrection}`)
+      } else if (frame.effectiveOcrText) {
         lines.push(
           `  Visible text (${frame.ocrSource === 'enhanced' ? 'enhanced local engine' : 'browser OCR'}): ${frame.effectiveOcrText}`,
         )
@@ -89,6 +95,18 @@ ${metadata.transcriptSegments
 `
     : ''
 
+  const aiActivitySection = report.aiActivitySummary
+    ? `AI Activity Summary:\n${report.aiActivitySummary}\n`
+    : ''
+
+  const aiHarSection = report.aiHarInsights
+    ? `AI HAR Analysis:\n${report.aiHarInsights}\n`
+    : ''
+
+  const aiTranscriptSection = report.aiTranscriptInsights
+    ? `AI Transcript Summary:\n${report.aiTranscriptInsights}\n`
+    : ''
+
   return `I am debugging an issue reported through a local-first screen recording workflow.
 
 Please analyze the timeline below and suggest:
@@ -116,7 +134,7 @@ ${environment}
 Analysis provenance:
 ${provenance.join('\n')}
 
-${steps ? `Reproduction steps:\n${steps}\n` : ''}${transcriptSection ? `${transcriptSection}\n` : ''}Timeline:
+${steps ? `Reproduction steps:\n${steps}\n` : ''}${aiActivitySection ? `${aiActivitySection}\n` : ''}${aiHarSection ? `${aiHarSection}\n` : ''}${aiTranscriptSection ? `${aiTranscriptSection}\n` : ''}${transcriptSection ? `${transcriptSection}\n` : ''}Timeline:
 ${timeline || '(no frames selected)'}
 
 ${suspiciousRequests.length > 0

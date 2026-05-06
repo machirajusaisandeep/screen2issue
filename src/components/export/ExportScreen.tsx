@@ -5,15 +5,18 @@ import { generateJson } from '@/lib/report/generateJson'
 import { generateAiPrompt } from '@/lib/report/generateAiPrompt'
 import { generateZipReport } from '@/lib/export/generateZip'
 import { downloadBlob, downloadMarkdown, downloadJson } from '@/lib/download'
+import { callAI, AIError } from '@/lib/ai/client'
+import type { AISettings } from '@/lib/ai/types'
 
 interface ExportScreenProps {
   report: BugReport
+  aiSettings: AISettings
   onChange: (r: BugReport) => void
   onBack: () => void
   onToast: (msg: string) => void
 }
 
-type Tab = 'markdown' | 'prompt' | 'json'
+type Tab = 'markdown' | 'prompt' | 'json' | 'enhanced-prompt'
 
 function MarkdownPreview({ text }: { text: string }) {
   const lines = text.split('\n')
@@ -31,15 +34,41 @@ function MarkdownPreview({ text }: { text: string }) {
   )
 }
 
-export function ExportScreen({ report, onChange, onBack, onToast }: ExportScreenProps) {
+export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: ExportScreenProps) {
   const [tab, setTab] = useState<Tab>('markdown')
   const [zipBusy, setZipBusy] = useState(false)
+  const [promptAiBusy, setPromptAiBusy] = useState(false)
+  const [promptAiError, setPromptAiError] = useState<string | null>(null)
 
   const md     = useMemo(() => generateMarkdown(report), [report])
   const prompt = useMemo(() => generateAiPrompt(report), [report])
   const json   = useMemo(() => generateJson(report),     [report])
 
-  const previewText = tab === 'markdown' ? md : tab === 'prompt' ? prompt : json
+  const previewText =
+    tab === 'markdown' ? md
+    : tab === 'prompt' ? prompt
+    : tab === 'json' ? json
+    : report.aiEnhancedPrompt ?? ''
+
+  async function handleEnhancePrompt() {
+    setPromptAiBusy(true)
+    setPromptAiError(null)
+    try {
+      const result = await callAI({
+        settings: aiSettings,
+        systemPrompt:
+          'You are a senior software engineer helping write debugging prompts for AI assistants. Improve the given prompt to be more precise, structured, and actionable.',
+        userPrompt: `Original debugging prompt:\n\n${prompt}\n\nPlease improve this prompt to be more precise and structured. Include specific areas to investigate based on the data provided. Return only the improved prompt text.`,
+      })
+      onChange({ ...report, aiEnhancedPrompt: result.text })
+      onToast('AI prompt enhanced')
+      setTab('enhanced-prompt')
+    } catch (error) {
+      setPromptAiError(error instanceof AIError ? error.message : 'Prompt enhancement failed.')
+    } finally {
+      setPromptAiBusy(false)
+    }
+  }
 
   function copy(text: string, label: string) {
     navigator.clipboard?.writeText(text).catch(() => {})
@@ -164,6 +193,17 @@ export function ExportScreen({ report, onChange, onBack, onToast }: ExportScreen
           <button className="btn" onClick={downloadZip} disabled={zipBusy}>
             {zipBusy ? 'Building ZIP…' : '↓ screen2issue-report.zip'}
           </button>
+          <button
+            className="btn"
+            onClick={handleEnhancePrompt}
+            disabled={promptAiBusy}
+            style={{ gridColumn: '1 / -1' }}
+          >
+            {promptAiBusy ? 'Enhancing…' : '✦ Enhance Prompt with AI'}
+          </button>
+          {promptAiError && (
+            <div className="analysis-error" style={{ gridColumn: '1 / -1' }}>{promptAiError}</div>
+          )}
           <button className="btn btn-ghost" onClick={onBack} style={{ gridColumn: '1 / -1' }}>
             ← Back to enhancements
           </button>
@@ -182,6 +222,14 @@ export function ExportScreen({ report, onChange, onBack, onToast }: ExportScreen
               {t === 'markdown' ? 'bug-report.md' : t === 'prompt' ? 'ai-prompt.txt' : 'metadata.json'}
             </button>
           ))}
+          {report.aiEnhancedPrompt && (
+            <button
+              className={`export-tab${tab === 'enhanced-prompt' ? ' active' : ''}`}
+              onClick={() => setTab('enhanced-prompt')}
+            >
+              ai-enhanced-prompt.txt
+            </button>
+          )}
           <span className="export-tab-spacer" />
           <div className="export-tab-actions">
             <button className="btn btn-ghost btn-sm" onClick={() => copy(previewText, tab)}>

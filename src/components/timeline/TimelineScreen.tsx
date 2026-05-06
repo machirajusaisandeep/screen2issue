@@ -14,10 +14,13 @@ import {
   type OcrSource,
 } from '@/lib/report/reportData'
 import { CursorEventBadge } from '@/components/timeline/CursorEventBadge'
+import { callAI, imageUrlToBase64, AIError } from '@/lib/ai/client'
+import type { AISettings } from '@/lib/ai/types'
 
 interface TimelineScreenProps {
   frames: ExtractedFrame[]
   report: BugReport
+  aiSettings: AISettings
   onChange: (frames: ExtractedFrame[]) => void
   onReportChange: (r: BugReport) => void
   onNext: () => void
@@ -67,10 +70,64 @@ function updateCursorCollection(
 }
 
 export function TimelineScreen({
-  frames, report, onChange, onReportChange, onNext,
+  frames, report, aiSettings, onChange, onReportChange, onNext,
 }: TimelineScreenProps) {
   const [layout, setLayout] = useState<Layout>('list')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [frameAiBusy, setFrameAiBusy] = useState<Record<string, 'screenshot' | 'ocr' | null>>({})
+  const [frameAiError, setFrameAiError] = useState<Record<string, string | null>>({})
+
+  function setFrameBusy(frameId: string, action: 'screenshot' | 'ocr' | null) {
+    setFrameAiBusy((prev) => ({ ...prev, [frameId]: action }))
+  }
+
+  function setFrameError(frameId: string, error: string | null) {
+    setFrameAiError((prev) => ({ ...prev, [frameId]: error }))
+  }
+
+  async function handleAnalyzeScreenshot(frame: ExtractedFrame) {
+    setFrameBusy(frame.id, 'screenshot')
+    setFrameError(frame.id, null)
+    try {
+      const imageBase64 = imageUrlToBase64(frame.imageUrl)
+      const result = await callAI({
+        settings: aiSettings,
+        systemPrompt:
+          'You are analyzing a screenshot from a screen recording bug report. Describe concisely what is visible: the UI state, key elements, any notable interactions or errors shown.',
+        userPrompt:
+          'Analyze this screenshot and describe what is visible, including UI elements, text content, and any apparent user actions or error states.',
+        imageBase64,
+        imageMimeType: 'image/jpeg',
+      })
+      onChange(updateFrame(frames, frame.id, { aiScreenshotAnalysis: result.text }))
+    } catch (error) {
+      setFrameError(frame.id, error instanceof AIError ? error.message : 'AI analysis failed.')
+    } finally {
+      setFrameBusy(frame.id, null)
+    }
+  }
+
+  async function handleFixOcr(frame: ExtractedFrame) {
+    setFrameBusy(frame.id, 'ocr')
+    setFrameError(frame.id, null)
+    const ocr = getEffectiveFrameOcr(frame)
+    try {
+      const imageBase64 = imageUrlToBase64(frame.imageUrl)
+      const result = await callAI({
+        settings: aiSettings,
+        systemPrompt:
+          'You are correcting OCR text extracted from a screenshot. Return only the corrected text with no explanation or commentary.',
+        userPrompt: `Current OCR text (may have errors): "${ocr.text ?? '(empty)'}"\n\nPlease correct this OCR text based on what is visible in the screenshot. Return only the corrected text.`,
+        imageBase64,
+        imageMimeType: 'image/jpeg',
+      })
+      onChange(updateFrame(frames, frame.id, { aiOcrCorrection: result.text }))
+    } catch (error) {
+      setFrameError(frame.id, error instanceof AIError ? error.message : 'AI OCR fix failed.')
+    } finally {
+      setFrameBusy(frame.id, null)
+    }
+  }
 
   const includedFrames = frames.filter((frame) => frame.included)
   const includedCount = includedFrames.length
@@ -209,6 +266,44 @@ export function TimelineScreen({
                       value={ocr.text ?? ''}
                       onChange={(event) => onChange(updateFrameOcrText(frames, frame.id, event.target.value, ocr.source))}
                     />
+                  </div>
+
+                  <div className="frame-subsection">
+                    <div className="frame-subsection-head">
+                      <span className="mono">ai analysis</span>
+                      <span>AI-powered screenshot description and OCR correction.</span>
+                    </div>
+                    <div className="analysis-actions" style={{ flexWrap: 'wrap' }}>
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => handleAnalyzeScreenshot(frame)}
+                        disabled={frameAiBusy[frame.id] != null}
+                      >
+                        {frameAiBusy[frame.id] === 'screenshot' ? 'Analyzing…' : 'Analyze Screenshot'}
+                      </button>
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => handleFixOcr(frame)}
+                        disabled={frameAiBusy[frame.id] != null}
+                      >
+                        {frameAiBusy[frame.id] === 'ocr' ? 'Fixing…' : 'Fix OCR with AI'}
+                      </button>
+                    </div>
+                    {frameAiError[frame.id] && (
+                      <div className="analysis-error">{frameAiError[frame.id]}</div>
+                    )}
+                    {frame.aiScreenshotAnalysis && (
+                      <div className="frame-related-list">
+                        <div className="frame-related-item">{frame.aiScreenshotAnalysis}</div>
+                      </div>
+                    )}
+                    {frame.aiOcrCorrection && (
+                      <div className="frame-related-list">
+                        <div className="frame-related-item">
+                          <strong>AI OCR correction:</strong> {frame.aiOcrCorrection}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {transcriptSegments.length > 0 ? (

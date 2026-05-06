@@ -1,14 +1,16 @@
+import { Settings } from 'lucide-react'
 import { getSurfaceLabel, type RuntimeCapabilities } from '@/lib/runtime/capabilities'
 
 interface AppBarProps {
   step: number
   onJump: (step: number) => void
   runtimeCapabilities: RuntimeCapabilities
+  onOpenSettings: () => void
 }
 
 const STEPS = ['Upload', 'Process', 'Review', 'Enhance', 'Export']
 
-export function AppBar({ step, onJump, runtimeCapabilities }: AppBarProps) {
+export function AppBar({ step, onJump, runtimeCapabilities, onOpenSettings }: AppBarProps) {
   return (
     <header className="appbar">
       <div className="brand" onClick={() => onJump(0)}>
@@ -34,13 +36,24 @@ export function AppBar({ step, onJump, runtimeCapabilities }: AppBarProps) {
         })}
       </nav>
 
-      <div className="privacy-badge">
-        <span className="privacy-dot" aria-hidden="true" />
-        <span>
-          {getSurfaceLabel(runtimeCapabilities.surface)}
-          {' · '}
-          {runtimeCapabilities.supportsBundledLocalEngine ? 'bundled local engine' : 'browser-only'}
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="privacy-badge">
+          <span className="privacy-dot" aria-hidden="true" />
+          <span>
+            {getSurfaceLabel(runtimeCapabilities.surface)}
+            {' · '}
+            {runtimeCapabilities.supportsBundledLocalEngine ? 'bundled local engine' : 'browser-only'}
+          </span>
+        </div>
+
+        <button
+          className="btn btn-ghost btn-icon"
+          onClick={onOpenSettings}
+          title="AI Settings"
+          aria-label="Open AI settings"
+        >
+          <Settings size={15} />
+        </button>
       </div>
     </header>
   )

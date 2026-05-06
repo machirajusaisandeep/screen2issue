@@ -18,7 +18,13 @@ export function generateMarkdown(report: BugReport, options: MarkdownOptions = {
       const note = frame.note || '_No note_'
       const lines = [`### ${frame.timestamp}`, '', `Note: ${note}`]
 
-      if (frame.effectiveOcrText) {
+      if (frame.aiScreenshotAnalysis) {
+        lines.push('', '**AI Screenshot Analysis:**', frame.aiScreenshotAnalysis)
+      }
+
+      if (frame.aiOcrCorrection) {
+        lines.push('', '**AI OCR Correction:**', frame.aiOcrCorrection)
+      } else if (frame.effectiveOcrText) {
         lines.push(
           '',
           `Visible text (${frame.ocrSource === 'enhanced' ? 'enhanced local engine' : 'browser OCR'}):`,
@@ -114,6 +120,12 @@ ${metadata.transcriptSegments
     .join('\n')}`
     : ''
 
+  const aiInsightsSection = [
+    report.aiActivitySummary ? `## AI Activity Summary\n\n${report.aiActivitySummary}` : '',
+    report.aiHarInsights     ? `## AI HAR Analysis\n\n${report.aiHarInsights}`         : '',
+    report.aiTranscriptInsights ? `## AI Transcript Summary\n\n${report.aiTranscriptInsights}` : '',
+  ].filter(Boolean).join('\n\n')
+
   const harSection = metadata.harSummary
     ? `## Network / HAR Summary
 
@@ -173,6 +185,7 @@ ${timelineSection || '_No frames selected_'}
 
 ${transcriptSection ? `\n\n${transcriptSection}` : ''}
 ${harSection ? `\n\n${harSection}` : ''}
+${aiInsightsSection ? `\n\n${aiInsightsSection}` : ''}
 
 ---
 

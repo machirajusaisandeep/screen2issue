@@ -18,6 +18,8 @@ export type ExtractedFrame = {
   enhancedQualityScore?: number
   enhancedWarnings?: string[]
   enhancedCursorAnalysisApplied?: boolean
+  aiScreenshotAnalysis?: string
+  aiOcrCorrection?: string
 }
 
 export type CursorEventType = 'possible_click' | 'possible_cursor_move'
@@ -89,6 +91,10 @@ export type BugReport = {
   transcriptSegments: TranscriptSegment[]
   localEngineStatus: LocalEngineStatus
   enhancementWarnings: string[]
+  aiActivitySummary?: string
+  aiHarInsights?: string
+  aiTranscriptInsights?: string
+  aiEnhancedPrompt?: string
 }
 
 export type ProcessingStep =

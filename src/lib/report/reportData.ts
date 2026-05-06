@@ -45,6 +45,8 @@ export type ExportFrameMetadata = {
   qualityScore?: number
   warnings: string[]
   harEntries: HarEntrySummary[]
+  aiScreenshotAnalysis?: string
+  aiOcrCorrection?: string
 }
 
 export type ExportMetadata = {
@@ -312,6 +314,8 @@ export function buildFrameMetadata(report: BugReport, frame: ExtractedFrame): Ex
     qualityScore: frame.enhancedQualityScore,
     warnings: frame.enhancedWarnings ?? [],
     harEntries: getNearbyHarEntries(report, frame.timestampMs),
+    aiScreenshotAnalysis: frame.aiScreenshotAnalysis,
+    aiOcrCorrection: frame.aiOcrCorrection,
   }
 }
 
