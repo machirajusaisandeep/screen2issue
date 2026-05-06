@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Copy, WandSparkles } from 'lucide-react'
 import type { BugReport } from '@/types/report'
 import { generateMarkdown } from '@/lib/report/generateMarkdown'
 import { generateJson } from '@/lib/report/generateJson'
@@ -17,6 +18,16 @@ interface ExportScreenProps {
 }
 
 type Tab = 'markdown' | 'prompt' | 'json' | 'enhanced-prompt'
+
+function estimateTokenCount(text: string) {
+  if (!text.trim()) return 0
+  return Math.ceil(text.length / 4)
+}
+
+function formatTokenCount(count: number) {
+  if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k`
+  return count.toLocaleString()
+}
 
 function MarkdownPreview({ text }: { text: string }) {
   const lines = text.split('\n')
@@ -49,6 +60,15 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
     : tab === 'prompt' ? prompt
     : tab === 'json' ? json
     : report.aiEnhancedPrompt ?? ''
+
+  const tabItems = [
+    { id: 'markdown' as const, label: 'bug-report.md', text: md },
+    { id: 'prompt' as const, label: 'ai-prompt.txt', text: prompt },
+    { id: 'json' as const, label: 'metadata.json', text: json },
+    ...(report.aiEnhancedPrompt
+      ? [{ id: 'enhanced-prompt' as const, label: 'ai-enhanced-prompt.txt', text: report.aiEnhancedPrompt }]
+      : []),
+  ]
 
   async function handleEnhancePrompt() {
     setPromptAiBusy(true)
@@ -178,10 +198,10 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
 
         <div className="export-actions">
           <button
-            className="btn btn-primary"
+            className="btn btn-ai"
             onClick={() => copy(prompt, 'AI debugging prompt')}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
+            <Copy size={16} strokeWidth={2.2} />
             Copy AI prompt
           </button>
           <button className="btn" onClick={() => download('bug-report.md', md)}>
@@ -194,12 +214,13 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
             {zipBusy ? 'Building ZIP…' : '↓ screen2issue-report.zip'}
           </button>
           <button
-            className="btn"
+            className="btn btn-ai"
             onClick={handleEnhancePrompt}
             disabled={promptAiBusy}
             style={{ gridColumn: '1 / -1' }}
           >
-            {promptAiBusy ? 'Enhancing…' : '✦ Enhance Prompt with AI'}
+            <WandSparkles size={16} strokeWidth={2.2} />
+            {promptAiBusy ? 'Enhancing…' : 'Enhance Prompt with AI'}
           </button>
           {promptAiError && (
             <div className="analysis-error" style={{ gridColumn: '1 / -1' }}>{promptAiError}</div>
@@ -213,23 +234,18 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
       {/* ── Right: live preview ── */}
       <section className="export-preview">
         <div className="export-preview-tabs">
-          {(['markdown', 'prompt', 'json'] as Tab[]).map((t) => (
+          {tabItems.map((item) => (
             <button
-              key={t}
-              className={`export-tab${tab === t ? ' active' : ''}`}
-              onClick={() => setTab(t)}
+              key={item.id}
+              className={`export-tab${tab === item.id ? ' active' : ''}`}
+              onClick={() => setTab(item.id)}
             >
-              {t === 'markdown' ? 'bug-report.md' : t === 'prompt' ? 'ai-prompt.txt' : 'metadata.json'}
+              <span>{item.label}</span>
+              <span className="export-tab-token">
+                ~{formatTokenCount(estimateTokenCount(item.text))} tokens
+              </span>
             </button>
           ))}
-          {report.aiEnhancedPrompt && (
-            <button
-              className={`export-tab${tab === 'enhanced-prompt' ? ' active' : ''}`}
-              onClick={() => setTab('enhanced-prompt')}
-            >
-              ai-enhanced-prompt.txt
-            </button>
-          )}
           <span className="export-tab-spacer" />
           <div className="export-tab-actions">
             <button className="btn btn-ghost btn-sm" onClick={() => copy(previewText, tab)}>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ScanSearch, WandSparkles } from 'lucide-react'
 import type { BugReport, CursorEvent, ExtractedFrame } from '@/types/report'
 import { formatTimestamp } from '@/lib/video/formatTimestamp'
 import {
@@ -275,17 +276,19 @@ export function TimelineScreen({
                     </div>
                     <div className="analysis-actions" style={{ flexWrap: 'wrap' }}>
                       <button
-                        className="btn btn-sm"
+                        className="btn btn-ai btn-sm"
                         onClick={() => handleAnalyzeScreenshot(frame)}
                         disabled={frameAiBusy[frame.id] != null}
                       >
+                        <ScanSearch size={14} strokeWidth={2.2} />
                         {frameAiBusy[frame.id] === 'screenshot' ? 'Analyzing…' : 'Analyze Screenshot'}
                       </button>
                       <button
-                        className="btn btn-sm"
+                        className="btn btn-ai btn-sm"
                         onClick={() => handleFixOcr(frame)}
                         disabled={frameAiBusy[frame.id] != null}
                       >
+                        <WandSparkles size={14} strokeWidth={2.2} />
                         {frameAiBusy[frame.id] === 'ocr' ? 'Fixing…' : 'Fix OCR with AI'}
                       </button>
                     </div>

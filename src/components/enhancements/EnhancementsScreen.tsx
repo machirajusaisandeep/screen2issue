@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { BrainCircuit, FileSearch, MessagesSquare } from 'lucide-react'
 import type { BugReport } from '@/types/report'
 import { HarUpload } from '@/components/har/HarUpload'
 import { HarSummaryPanel } from '@/components/har/HarSummaryPanel'
@@ -36,6 +37,31 @@ interface EnhancementsScreenProps {
   onBack: () => void
   onNext: () => void
   onReportChange: (report: BugReport) => void
+}
+
+function EnhancementAccordionSection({
+  children,
+  count,
+  defaultOpen = true,
+  eyebrow,
+  title,
+}: {
+  children: ReactNode
+  count?: string
+  defaultOpen?: boolean
+  eyebrow: string
+  title: string
+}) {
+  return (
+    <details className="enhancement-accordion" open={defaultOpen}>
+      <summary className="enhancement-accordion-summary">
+        <span className="enhancement-accordion-kicker mono">{eyebrow}</span>
+        <span className="enhancement-accordion-title">{title}</span>
+        {count ? <span className="analysis-pill mono">{count}</span> : null}
+      </summary>
+      <div className="enhancement-accordion-body">{children}</div>
+    </details>
+  )
 }
 
 type LocalAction = 'check' | 'enhance' | 'transcribe' | null
@@ -321,158 +347,149 @@ export function EnhancementsScreen({
           </div>
         </div>
 
-        <div className="analysis-grid">
-          <div className="analysis-card analysis-card-callout">
-            <div className="analysis-card-head">
-              <div>
-                <h3>Optional Enrichments</h3>
-                <p>
-                  Step 4 is where extra debugging context lives. HAR stays here, and the optional
-                  local engine can layer better OCR, cursor analysis, and audio transcript data on
-                  top of the browser-only baseline from step 2.
-                </p>
+        <div className="enhancements-accordion-list">
+          <EnhancementAccordionSection
+            eyebrow="1"
+            title="Local Engine"
+            count={report.localEngineStatus.state}
+          >
+            {runtimeCapabilities.showLocalEngineActions ? (
+              <LocalEnginePanel
+                status={report.localEngineStatus}
+                frameCount={report.frames.length}
+                transcriptCount={report.transcriptSegments.length}
+                videoName={report.videoName}
+                busyAction={busyAction}
+                error={localEngineError}
+                message={localEngineMessage}
+                onCheck={handleCheckLocalEngine}
+                onEnhance={handleEnhanceDetection}
+                onTranscribe={handleTranscribeAudio}
+              />
+            ) : (
+              <div className="analysis-card">
+                <div className="analysis-card-head">
+                  <div>
+                    <h3>Desktop-Only Local Engine</h3>
+                    <p>
+                      The hosted {runtimeCapabilities.surface === 'pwa' ? 'PWA' : 'web app'} ships the
+                      browser-only workflow publicly. Enhanced OCR, local transcription, and bundled
+                      helper startup are available in the Mac app release.
+                    </p>
+                  </div>
+                  <div className="analysis-pill mono">browser-only release</div>
+                </div>
+                <div className="analysis-warning">
+                  Public web and PWA releases keep step 4 focused on browser-safe enhancements like
+                  HAR import. Install the Mac app when you want the bundled local engine workflow.
+                </div>
+                <div className="analysis-stats mono">
+                  <span>HAR import is still available here</span>
+                  <span>browser OCR and cursor detection already ran in step 2</span>
+                  <span>desktop surface unlocks transcript + enhanced OCR</span>
+                </div>
               </div>
-              <div className="analysis-pill mono">step 4 of 5</div>
-            </div>
-            <div className="analysis-stats mono">
-              <span>browser mode still works with no Python engine</span>
-              <span>safe to skip and continue</span>
-              <span>{report.transcriptSegments.length > 0 ? `${report.transcriptSegments.length} transcript segments loaded` : 'no transcript loaded yet'}</span>
-              <span>{report.harSummary ? `${report.harSummary.totalRequests} HAR requests loaded` : 'no HAR loaded yet'}</span>
-            </div>
-          </div>
+            )}
+          </EnhancementAccordionSection>
 
-          {runtimeCapabilities.showLocalEngineActions ? (
-            <LocalEnginePanel
-              status={report.localEngineStatus}
-              frameCount={report.frames.length}
-              transcriptCount={report.transcriptSegments.length}
-              videoName={report.videoName}
-              busyAction={busyAction}
-              error={localEngineError}
-              message={localEngineMessage}
-              onCheck={handleCheckLocalEngine}
-              onEnhance={handleEnhanceDetection}
-              onTranscribe={handleTranscribeAudio}
+          <EnhancementAccordionSection
+            eyebrow="2"
+            title="HAR"
+            count={report.harSummary ? `${report.harSummary.totalRequests} requests` : 'not loaded'}
+          >
+            <HarUpload
+              fileName={report.harSummary?.fileName}
+              syncOffsetSeconds={harSyncOffsetSeconds}
+              error={harError}
+              onFileSelected={handleHarSelected}
+              onSyncOffsetChange={handleHarOffsetChange}
             />
-          ) : (
-            <div className="analysis-card">
+            {report.harSummary ? <HarSummaryPanel summary={report.harSummary} /> : null}
+          </EnhancementAccordionSection>
+
+          <EnhancementAccordionSection
+            eyebrow="3"
+            title="Audio Transcript"
+            count={report.transcriptSegments.length > 0 ? `${report.transcriptSegments.length} segments` : 'empty'}
+          >
+            <TranscriptPanel segments={report.transcriptSegments} />
+          </EnhancementAccordionSection>
+
+          <EnhancementAccordionSection
+            eyebrow="4"
+            title="AI Analysis"
+            count={aiSettings.provider}
+          >
+            <div className="analysis-card analysis-card-callout">
               <div className="analysis-card-head">
                 <div>
-                  <h3>Desktop-Only Local Engine</h3>
+                  <h3>AI Analysis</h3>
                   <p>
-                    The hosted {runtimeCapabilities.surface === 'pwa' ? 'PWA' : 'web app'} ships the
-                    browser-only workflow publicly. Enhanced OCR, local transcription, and bundled
-                    helper startup are available in the Mac app release.
+                    Use your configured AI provider to understand user activity, analyze network
+                    traffic, and summarize the transcript. Calls go directly from your browser
+                    to the provider API — nothing is proxied.
                   </p>
                 </div>
-                <div className="analysis-pill mono">browser-only release</div>
+                <div className="analysis-pill mono">{aiSettings.provider}</div>
               </div>
-              <div className="analysis-warning">
-                Public web and PWA releases keep step 4 focused on browser-safe enhancements like
-                HAR import. Install the Mac app when you want the bundled local engine workflow.
-              </div>
-              <div className="analysis-stats mono">
-                <span>HAR import is still available here</span>
-                <span>browser OCR and cursor detection already ran in step 2</span>
-                <span>desktop surface unlocks transcript + enhanced OCR</span>
-              </div>
-            </div>
-          )}
-
-          <HarUpload
-            fileName={report.harSummary?.fileName}
-            syncOffsetSeconds={harSyncOffsetSeconds}
-            error={harError}
-            onFileSelected={handleHarSelected}
-            onSyncOffsetChange={handleHarOffsetChange}
-          />
-
-          <TranscriptPanel segments={report.transcriptSegments} />
-
-          <div className="analysis-card analysis-card-callout">
-            <div className="analysis-card-head">
-              <div>
-                <h3>AI Analysis</h3>
-                <p>
-                  Use your configured AI provider to understand user activity, analyze network
-                  traffic, and summarize the transcript. Calls go directly from your browser
-                  to the provider API — nothing is proxied.
-                </p>
-              </div>
-              <div className="analysis-pill mono">{aiSettings.provider}</div>
-            </div>
-            <div className="analysis-actions">
-              <button
-                className="btn btn-primary"
-                onClick={handleAnalyzeActivity}
-                disabled={aiBusyAction !== null}
-              >
-                {aiBusyAction === 'activity' ? 'Analyzing…' : 'Understand Activity with AI'}
-              </button>
-              {report.harSummary && (
+              <div className="analysis-actions">
                 <button
-                  className="btn"
-                  onClick={handleAnalyzeHar}
+                  className="btn btn-ai"
+                  onClick={handleAnalyzeActivity}
                   disabled={aiBusyAction !== null}
                 >
-                  {aiBusyAction === 'har' ? 'Analyzing…' : 'Analyze HAR with AI'}
+                  <BrainCircuit size={16} strokeWidth={2.2} />
+                  {aiBusyAction === 'activity' ? 'Analyzing…' : 'Understand Activity with AI'}
                 </button>
+                {report.harSummary && (
+                  <button
+                    className="btn btn-ai"
+                    onClick={handleAnalyzeHar}
+                    disabled={aiBusyAction !== null}
+                  >
+                    <FileSearch size={16} strokeWidth={2.2} />
+                    {aiBusyAction === 'har' ? 'Analyzing…' : 'Analyze HAR with AI'}
+                  </button>
+                )}
+                {report.transcriptSegments.length > 0 && (
+                  <button
+                    className="btn btn-ai"
+                    onClick={handleAnalyzeTranscript}
+                    disabled={aiBusyAction !== null}
+                  >
+                    <MessagesSquare size={16} strokeWidth={2.2} />
+                    {aiBusyAction === 'transcript' ? 'Analyzing…' : 'Analyze Transcript with AI'}
+                  </button>
+                )}
+              </div>
+              {aiMessage && <div className="analysis-success">{aiMessage}</div>}
+              {aiError && <div className="analysis-error">{aiError}</div>}
+              {report.aiActivitySummary && (
+                <div className="frame-subsection">
+                  <div className="frame-subsection-head"><span className="mono">activity summary</span></div>
+                  <div className="frame-related-list">
+                    <div className="frame-related-item">{report.aiActivitySummary}</div>
+                  </div>
+                </div>
               )}
-              {report.transcriptSegments.length > 0 && (
-                <button
-                  className="btn"
-                  onClick={handleAnalyzeTranscript}
-                  disabled={aiBusyAction !== null}
-                >
-                  {aiBusyAction === 'transcript' ? 'Analyzing…' : 'Analyze Transcript with AI'}
-                </button>
+              {report.aiHarInsights && (
+                <div className="frame-subsection">
+                  <div className="frame-subsection-head"><span className="mono">har insights</span></div>
+                  <div className="frame-related-list">
+                    <div className="frame-related-item">{report.aiHarInsights}</div>
+                  </div>
+                </div>
+              )}
+              {report.aiTranscriptInsights && (
+                <div className="frame-subsection">
+                  <div className="frame-subsection-head"><span className="mono">transcript insights</span></div>
+                  <div className="frame-related-list">
+                    <div className="frame-related-item">{report.aiTranscriptInsights}</div>
+                  </div>
+                </div>
               )}
             </div>
-            {aiMessage && <div className="analysis-success">{aiMessage}</div>}
-            {aiError && <div className="analysis-error">{aiError}</div>}
-            {report.aiActivitySummary && (
-              <div className="frame-subsection">
-                <div className="frame-subsection-head"><span className="mono">activity summary</span></div>
-                <div className="frame-related-list">
-                  <div className="frame-related-item">{report.aiActivitySummary}</div>
-                </div>
-              </div>
-            )}
-            {report.aiHarInsights && (
-              <div className="frame-subsection">
-                <div className="frame-subsection-head"><span className="mono">har insights</span></div>
-                <div className="frame-related-list">
-                  <div className="frame-related-item">{report.aiHarInsights}</div>
-                </div>
-              </div>
-            )}
-            {report.aiTranscriptInsights && (
-              <div className="frame-subsection">
-                <div className="frame-subsection-head"><span className="mono">transcript insights</span></div>
-                <div className="frame-related-list">
-                  <div className="frame-related-item">{report.aiTranscriptInsights}</div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="analysis-card">
-            <div className="analysis-card-head">
-              <div>
-                <h3>More Enhancements Coming</h3>
-                <p>
-                  This stage is intentionally separate from review so we can keep adding optional
-                  debugging inputs without crowding the export step.
-                </p>
-              </div>
-            </div>
-            <div className="analysis-roadmap">
-              <div className="analysis-roadmap-item">Console logs or traces</div>
-              <div className="analysis-roadmap-item">Browser metadata import</div>
-              <div className="analysis-roadmap-item">Additional local engine enrichments</div>
-            </div>
-          </div>
+          </EnhancementAccordionSection>
         </div>
 
         {report.enhancementWarnings.length > 0 ? (
@@ -492,8 +509,6 @@ export function EnhancementsScreen({
             </div>
           </div>
         ) : null}
-
-        {report.harSummary ? <HarSummaryPanel summary={report.harSummary} /> : null}
       </section>
     </main>
   )

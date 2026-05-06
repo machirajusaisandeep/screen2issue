@@ -40,7 +40,7 @@ export function AISettingsModal({ open, initialSettings, onSave, onClose }: AISe
         <div className="ai-modal-body">
           <div className="ai-field">
             <span className="ai-field-label">Provider</span>
-            <div className="tweaks-seg">
+            <div className="ai-provider-seg">
               {PROVIDERS.map((p) => (
                 <button
                   key={p.id}
