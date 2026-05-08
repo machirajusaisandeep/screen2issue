@@ -14,7 +14,7 @@ export function AppBar({ step, onJump, runtimeCapabilities, onOpenSettings }: Ap
   return (
     <header className="appbar">
       <div className="brand" onClick={() => onJump(0)}>
-        <div className="brand-mark" aria-hidden="true" />
+        <img src="/favicon.svg" alt="" aria-hidden="true" className="brand-mark" />
         <span className="brand-name">screen2issue</span>
         <span className="brand-version mono">v0.1</span>
       </div>

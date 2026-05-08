@@ -102,18 +102,7 @@ textarea { resize: vertical; }
 }
 .brand-mark {
   width: 22px; height: 22px;
-  border: 1.5px solid var(--accent); border-radius: 4px;
-  position: relative; display: grid; place-items: center;
-}
-.brand-mark::before {
-  content: ''; width: 8px; height: 8px;
-  background: var(--accent); border-radius: 1px;
-}
-.brand-mark::after {
-  content: ''; position: absolute;
-  width: 14px; height: 1.5px;
-  background: var(--accent); bottom: -4px; right: -6px;
-  transform: rotate(45deg); transform-origin: right center;
+  border-radius: 4px; display: block; flex-shrink: 0;
 }
 .brand-name { color: var(--fg); }
 .brand-version {
