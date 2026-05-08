@@ -1105,33 +1105,36 @@ textarea { resize: vertical; }
 .ai-field-note {
   font-size: 11px; color: var(--fg-3); font-family: var(--font-mono);
 }
-.ai-provider-seg {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+.ai-provider-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 22px;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-.ai-provider-seg button {
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid transparent;
-  border-radius: 5px;
+.ai-provider-tabs::-webkit-scrollbar { display: none; }
+.ai-provider-tab {
+  position: relative;
+  padding: 11px 16px 10px;
+  border: none; border-bottom: 2px solid transparent;
+  border-radius: 0;
   background: transparent;
   color: var(--fg-3);
-  font-family: var(--font-mono);
+  font-family: var(--font-mono); font-size: 12px;
+  white-space: nowrap;
+  transition: color 0.12s, border-color 0.12s;
+  display: flex; align-items: center; gap: 6px;
 }
-.ai-provider-seg button:hover {
+.ai-provider-tab:hover { color: var(--fg); }
+.ai-provider-tab.active {
   color: var(--fg);
-  background: var(--bg-2);
+  border-bottom-color: var(--accent);
 }
-.ai-provider-seg button.active {
-  color: oklch(0.16 0.025 74);
-  background: linear-gradient(135deg, oklch(0.86 0.16 82), oklch(0.76 0.18 68));
-  border-color: color-mix(in oklab, var(--accent) 72%, white);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset;
+.ai-provider-tab-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
 }
 .btn-icon {
   display: inline-flex; align-items: center; justify-content: center;
