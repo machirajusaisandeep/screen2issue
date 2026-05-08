@@ -23,11 +23,11 @@ const STEP_INDEX: Record<AppStep, number> = {
 const STEP_KEYS: AppStep[] = ['upload', 'processing', 'timeline', 'enhancements', 'export']
 
 const HINTS: Record<AppStep, { k: string; l: string }[]> = {
-  upload:       [{ k: '1–5', l: 'jump to screen' }],
-  processing:   [{ k: 'esc', l: 'cancel' }],
-  timeline:     [{ k: 'enter', l: 'continue to enhancements' }, { k: '1–5', l: 'jump' }],
-  enhancements: [{ k: 'enter', l: 'continue to export' }, { k: '1–5', l: 'jump' }],
-  export:       [{ k: '⌘C', l: 'copy AI prompt' }, { k: '1–5', l: 'jump' }],
+  upload:       [],
+  processing:   [],
+  timeline:     [{ k: 'enter', l: 'continue to enhancements' }],
+  enhancements: [{ k: 'enter', l: 'continue to export' }],
+  export:       [{ k: '⌘C', l: 'copy AI prompt' }],
 }
 
 function makeEmptyReport(file: File, localEngineStatus: LocalEngineStatus): BugReport {
@@ -248,7 +248,7 @@ export default function App() {
         />
       )}
 
-      <HintBar items={HINTS[step]} runtimeCapabilities={runtimeCapabilities} />
+      <HintBar items={HINTS[step]} />
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
 
