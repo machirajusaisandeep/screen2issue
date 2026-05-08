@@ -7,6 +7,8 @@ export type ExtractedFrame = {
   id: string
   timestampMs: number
   imageUrl: string
+  width?: number
+  height?: number
   differenceScore: number
   included: boolean
   note?: string

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ScanSearch, WandSparkles } from 'lucide-react'
 import type { BugReport, CursorEvent, ExtractedFrame } from '@/types/report'
+import { countTextTokens, formatTokenCount } from '@/lib/tokens'
 import { formatTimestamp } from '@/lib/video/formatTimestamp'
 import {
   countFramesWithEffectiveOcr,
@@ -28,6 +29,13 @@ interface TimelineScreenProps {
 }
 
 type Layout = 'list' | 'grid'
+
+function estimateFrameTokens(frame: ExtractedFrame): number {
+  const base = 20
+  const ocr = countTextTokens((frame.enhancedOcrText ?? frame.ocrText) ?? '')
+  const note = countTextTokens(frame.note ?? '')
+  return base + ocr + note
+}
 
 function updateFrame(frames: ExtractedFrame[], id: string, patch: Partial<ExtractedFrame>) {
   return frames.map((frame) => (frame.id === id ? { ...frame, ...patch } : frame))
@@ -132,6 +140,7 @@ export function TimelineScreen({
 
   const includedFrames = frames.filter((frame) => frame.included)
   const includedCount = includedFrames.length
+  const totalReportTokens = includedFrames.reduce((sum, f) => sum + estimateFrameTokens(f), 0)
   const ocrCount = countFramesWithEffectiveOcr(includedFrames)
   const enhancedOcrCount = frames.filter(
     (frame) => frame.enhancedOcrText !== undefined || frame.enhancedOcrConfidence !== undefined,
@@ -148,6 +157,7 @@ export function TimelineScreen({
             <div className="review-meta mono">
               <span><strong>{includedCount}</strong>/{frames.length} frames included</span>
               <span>· source: <strong>{report.videoName}</strong></span>
+              <span>· <strong>{formatTokenCount(totalReportTokens)}</strong> tokens</span>
             </div>
           </div>
 
@@ -203,6 +213,12 @@ export function TimelineScreen({
             const labels = frame.enhancedDetectedLabels ?? []
             const warnings = frame.enhancedWarnings ?? []
 
+            const frameTokens = estimateFrameTokens(frame)
+            const hasAiContent = !!(frame.aiScreenshotAnalysis || frame.aiOcrCorrection)
+            const aiTokens = Math.ceil(
+              ((frame.aiScreenshotAnalysis ?? '') + (frame.aiOcrCorrection ?? '')).length / 4,
+            )
+
             return (
               <div key={frame.id} className={`frame-card ${frame.included ? 'selected' : 'excluded'}`}>
                 <div
@@ -216,6 +232,12 @@ export function TimelineScreen({
                   />
                   <span className="frame-thumb-time mono">{formatTimestamp(frame.timestampMs)}</span>
                   <span className="frame-thumb-diff mono">Δ {frame.differenceScore.toFixed(2)}</span>
+                </div>
+                <div className="frame-token-row mono">
+                  <span className="frame-token-count">{formatTokenCount(frameTokens)} tokens</span>
+                  {hasAiContent && (
+                    <span className="frame-token-ai">+{formatTokenCount(aiTokens)} AI</span>
+                  )}
                 </div>
 
                 <div className="frame-body">

@@ -106,6 +106,8 @@ export async function extractFrames(
             id: nanoid(),
             timestampMs: Math.round(t * 1000),
             imageUrl,
+            width: fullCanvas.width,
+            height: fullCanvas.height,
             differenceScore: Math.round(diff * 100) / 100,
             included: true,
           })

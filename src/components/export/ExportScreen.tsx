@@ -8,6 +8,7 @@ import { generateZipReport } from '@/lib/export/generateZip'
 import { downloadBlob, downloadMarkdown, downloadJson } from '@/lib/download'
 import { callAI, AIError } from '@/lib/ai/client'
 import type { AISettings } from '@/lib/ai/types'
+import { countTextTokens, countImageTokens, formatTokenCount as fmtTok } from '@/lib/tokens'
 
 interface ExportScreenProps {
   report: BugReport
@@ -20,13 +21,11 @@ interface ExportScreenProps {
 type Tab = 'markdown' | 'prompt' | 'json' | 'enhanced-prompt'
 
 function estimateTokenCount(text: string) {
-  if (!text.trim()) return 0
-  return Math.ceil(text.length / 4)
+  return countTextTokens(text)
 }
 
 function formatTokenCount(count: number) {
-  if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k`
-  return count.toLocaleString()
+  return fmtTok(count)
 }
 
 function MarkdownPreview({ text }: { text: string }) {
@@ -54,6 +53,29 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
   const md     = useMemo(() => generateMarkdown(report), [report])
   const prompt = useMemo(() => generateAiPrompt(report), [report])
   const json   = useMemo(() => generateJson(report),     [report])
+
+  const includedFrames = report.frames.filter((f) => f.included)
+  const rawFrameTokens = includedFrames.reduce(
+    (sum, f) => sum + countImageTokens(f.width ?? 1920, f.height ?? 1080),
+    0,
+  )
+
+  const baseReportTokens = useMemo(() => estimateTokenCount(prompt), [prompt])
+
+  const aiGeneratedTokens = useMemo(() => {
+    const frameAi = report.frames.reduce((sum, f) => {
+      return sum + countTextTokens((f.aiScreenshotAnalysis ?? '') + (f.aiOcrCorrection ?? ''))
+    }, 0)
+    const reportAi = countTextTokens(
+      (report.aiActivitySummary ?? '') +
+      (report.aiHarInsights ?? '') +
+      (report.aiTranscriptInsights ?? '') +
+      (report.aiEnhancedPrompt ?? ''),
+    )
+    return frameAi + reportAi
+  }, [report])
+
+  const hasAiContent = aiGeneratedTokens > 0
 
   const previewText =
     tab === 'markdown' ? md
@@ -193,6 +215,31 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
             >
               + add step
             </button>
+          </div>
+        </div>
+
+        <div className="token-summary">
+          <div className="token-summary-head mono">token optimization</div>
+          <div className="token-summary-rows">
+            <div className="token-summary-row">
+              <span className="token-summary-label">Without AI</span>
+              <span className="token-summary-value mono">{formatTokenCount(baseReportTokens)} tokens</span>
+            </div>
+            {hasAiContent && (
+              <div className="token-summary-row">
+                <span className="token-summary-label">With AI enhancements</span>
+                <span className="token-summary-value mono accent">
+                  {formatTokenCount(baseReportTokens + aiGeneratedTokens)} tokens
+                </span>
+              </div>
+            )}
+            <div className="token-summary-row">
+              <span className="token-summary-label">Raw frames (est.)</span>
+              <span className="token-summary-value mono muted">{formatTokenCount(rawFrameTokens)} tokens</span>
+            </div>
+            <div className="token-summary-savings mono">
+              saves {formatTokenCount(rawFrameTokens - baseReportTokens)} tokens vs raw frames
+            </div>
           </div>
         </div>
 
