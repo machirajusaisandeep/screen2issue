@@ -43,3 +43,6 @@ python-engine/model-cache
 *.njsproj
 *.sln
 *.sw?
+
+# Local engine binaries and models (large files, not tracked in git)
+src-tauri/resources/local-engine/
