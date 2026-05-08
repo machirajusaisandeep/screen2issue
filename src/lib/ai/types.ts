@@ -1,4 +1,4 @@
-export type AIProvider = 'gemini' | 'claude' | 'openai' | 'deepseek'
+export type AIProvider = 'gemini' | 'claude' | 'openai' | 'deepseek' | 'ollama'
 
 export type GeminiModel =
   | 'gemini-2.0-flash'
@@ -20,6 +20,8 @@ export type AISettings = {
   claudeKey: string
   openaiKey: string
   deepseekKey: string
+  ollamaBaseUrl: string
+  ollamaModel: string
 }
 
 export type AICallOptions = {

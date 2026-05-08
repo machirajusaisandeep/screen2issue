@@ -13,6 +13,7 @@ const PROVIDERS: { id: AIProvider; label: string }[] = [
   { id: 'claude',   label: 'Claude' },
   { id: 'openai',   label: 'OpenAI' },
   { id: 'deepseek', label: 'DeepSeek' },
+  { id: 'ollama',   label: 'Ollama' },
 ]
 
 export function AISettingsModal({ open, initialSettings, onSave, onClose }: AISettingsModalProps) {
@@ -118,7 +119,35 @@ export function AISettingsModal({ open, initialSettings, onSave, onClose }: AISe
             <span className="ai-field-note">Text-only — screenshot image analysis is skipped.</span>
           </div>
 
-          <p className="ai-field-note">Keys are stored only in localStorage on this device.</p>
+          <div className="ai-field">
+            <label className="ai-field-label" htmlFor="ai-ollama-url">Ollama Base URL</label>
+            <input
+              id="ai-ollama-url"
+              type="text"
+              className="s2i-input"
+              placeholder="http://localhost:11434"
+              value={draft.ollamaBaseUrl}
+              onChange={(e) => setDraft((d) => ({ ...d, ollamaBaseUrl: e.target.value }))}
+              autoComplete="off"
+            />
+            <label className="ai-field-label" htmlFor="ai-ollama-model" style={{ marginTop: 8 }}>Model</label>
+            <input
+              id="ai-ollama-model"
+              type="text"
+              className="s2i-input"
+              placeholder="llava"
+              value={draft.ollamaModel}
+              onChange={(e) => setDraft((d) => ({ ...d, ollamaModel: e.target.value }))}
+              autoComplete="off"
+            />
+            <span className="ai-field-note">
+              No API key needed. Use a vision model (llava, llama3.2-vision) for screenshot analysis.
+              If running from a hosted URL, start Ollama with{' '}
+              <code className="mono">OLLAMA_ORIGINS=*</code>.
+            </span>
+          </div>
+
+          <p className="ai-field-note">API keys are stored only in localStorage on this device.</p>
         </div>
 
         <div className="ai-modal-footer">

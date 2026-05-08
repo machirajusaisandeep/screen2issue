@@ -37,15 +37,6 @@ export function AppBar({ step, onJump, runtimeCapabilities, onOpenSettings }: Ap
       </nav>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div className="privacy-badge">
-          <span className="privacy-dot" aria-hidden="true" />
-          <span>
-            {getSurfaceLabel(runtimeCapabilities.surface)}
-            {' · '}
-            {runtimeCapabilities.supportsBundledLocalEngine ? 'bundled local engine' : 'browser-only'}
-          </span>
-        </div>
-
         <button
           className="btn btn-ghost btn-icon"
           onClick={onOpenSettings}

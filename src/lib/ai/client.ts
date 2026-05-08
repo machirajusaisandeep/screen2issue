@@ -4,6 +4,7 @@ import { callGemini } from './gemini'
 import { callClaude } from './claude'
 import { callOpenAI } from './openai'
 import { callDeepSeek } from './deepseek'
+import { callOllama } from './ollama'
 
 export { AIError } from './types'
 export type { AISettings, AICallOptions, AICallResult } from './types'
@@ -13,23 +14,26 @@ const PROVIDER_LABELS: Record<AISettings['provider'], string> = {
   claude: 'Claude',
   openai: 'OpenAI',
   deepseek: 'DeepSeek',
+  ollama: 'Ollama',
 }
 
 export async function callAI(options: AICallOptions): Promise<AICallResult> {
   const { provider } = options.settings
 
-  // Validate the relevant key is present before making any network call
-  const keyMap: Record<AISettings['provider'], string> = {
-    gemini: options.settings.geminiKey,
-    claude: options.settings.claudeKey,
-    openai: options.settings.openaiKey,
-    deepseek: options.settings.deepseekKey,
-  }
-  if (!keyMap[provider]) {
-    throw new AIError(
-      'no_key',
-      `No ${PROVIDER_LABELS[provider]} API key configured. Open Settings (gear icon) to add one.`,
-    )
+  // Ollama needs no API key — just a running local server
+  if (provider !== 'ollama') {
+    const keyMap: Record<Exclude<AISettings['provider'], 'ollama'>, string> = {
+      gemini: options.settings.geminiKey,
+      claude: options.settings.claudeKey,
+      openai: options.settings.openaiKey,
+      deepseek: options.settings.deepseekKey,
+    }
+    if (!keyMap[provider]) {
+      throw new AIError(
+        'no_key',
+        `No ${PROVIDER_LABELS[provider]} API key configured. Open Settings (gear icon) to add one.`,
+      )
+    }
   }
 
   switch (provider) {
@@ -37,6 +41,7 @@ export async function callAI(options: AICallOptions): Promise<AICallResult> {
     case 'claude':   return callClaude(options)
     case 'openai':   return callOpenAI(options)
     case 'deepseek': return callDeepSeek(options)
+    case 'ollama':   return callOllama(options)
   }
 }
 
