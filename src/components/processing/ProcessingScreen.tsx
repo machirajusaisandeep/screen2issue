@@ -4,6 +4,24 @@ import { detectCursorEvents } from '@/lib/video/detectCursorEvents'
 import { runOcr } from '@/lib/ocr/runOcr'
 import { CURSOR_CONFIDENCE_THRESHOLD } from '@/lib/report/reportData'
 import type { CursorEvent, ExtractedFrame } from '@/types/report'
+import { countImageTokens, formatTokenCount } from '@/lib/tokens'
+
+const TYPICAL_BITRATE = 2 * 1024 * 1024 // 2 MB/s screen recording estimate
+
+function estimateFromFile(file: File) {
+  const durationEstSec = Math.max(5, file.size / TYPICAL_BITRATE)
+  const frameCount = Math.min(30, Math.ceil(durationEstSec))
+  const rawTokens = frameCount * countImageTokens(1920, 1080)
+  return { frameCount, rawTokens, exact: false }
+}
+
+function computeFromFrames(frames: ExtractedFrame[]) {
+  const rawTokens = frames.reduce(
+    (sum, f) => sum + countImageTokens(f.width ?? 1920, f.height ?? 1080),
+    0,
+  )
+  return { frameCount: frames.length, rawTokens, exact: true }
+}
 
 interface ProcessingResult {
   cursorEvents: CursorEvent[]
@@ -43,6 +61,7 @@ export function ProcessingScreen({ file, onComplete, onError }: ProcessingScreen
   const [logs, setLogs] = useState<LogLine[]>([
     { t: '00:00.000', k: 'open', m: `Reading ${file.name} (${(file.size / 1e6).toFixed(1)} MB)` },
   ])
+  const [tokenInfo, setTokenInfo] = useState(() => estimateFromFile(file))
   const logRef = useRef<HTMLDivElement>(null)
   const started = useRef(false)
 
@@ -81,6 +100,8 @@ export function ProcessingScreen({ file, onComplete, onError }: ProcessingScreen
           addLog({ t: fmtT(elapsed), k: step, m: messages[messages.length - 1] })
         }
       })
+
+      setTokenInfo(computeFromFrames(extractedFrames))
 
       setActiveIdx(3)
       addLog({
@@ -192,6 +213,29 @@ export function ProcessingScreen({ file, onComplete, onError }: ProcessingScreen
               </div>
             )
           })}
+        </div>
+
+        <div className="proc-token-card">
+          <div className="proc-token-head mono">token estimate{tokenInfo.exact ? '' : ' (updating…)'}</div>
+          <div className="proc-token-rows">
+            <div className="proc-token-row">
+              <span className="proc-token-label">Raw frames → AI</span>
+              <span className="proc-token-val warning mono">{formatTokenCount(tokenInfo.rawTokens)} tokens</span>
+              <span className="proc-token-hint mono">
+                {tokenInfo.exact ? tokenInfo.frameCount : `~${tokenInfo.frameCount}`} frames × ~{formatTokenCount(countImageTokens(1920, 1080))} each
+              </span>
+            </div>
+            <div className="proc-token-row">
+              <span className="proc-token-label">screen2issue report</span>
+              <span className="proc-token-val success mono">
+                {formatTokenCount(tokenInfo.frameCount * 25)}–{formatTokenCount(tokenInfo.frameCount * 80)} tokens
+              </span>
+              <span className="proc-token-hint mono">text-only · images stay local</span>
+            </div>
+            <div className="proc-token-savings mono">
+              saves {formatTokenCount(tokenInfo.rawTokens - tokenInfo.frameCount * 52)} tokens vs raw frames
+            </div>
+          </div>
         </div>
 
         <div className="proc-log" ref={logRef}>

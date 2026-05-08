@@ -1,18 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RuntimeCapabilities } from '@/lib/runtime/capabilities'
-import { countImageTokens, formatTokenCount } from '@/lib/tokens'
-
-// Typical screen recording: 1920×1080, 2 MB/s bitrate
-const TYPICAL_WIDTH = 1920
-const TYPICAL_HEIGHT = 1080
-const TYPICAL_BITRATE_BYTES_PER_SEC = 2 * 1024 * 1024
-
-function estimateVideoTokens(file: File) {
-  const durationEstSec = Math.max(5, file.size / TYPICAL_BITRATE_BYTES_PER_SEC)
-  const frameCount = Math.min(30, Math.ceil(durationEstSec))
-  const rawTokens = frameCount * countImageTokens(TYPICAL_WIDTH, TYPICAL_HEIGHT)
-  return { frameCount, rawTokens }
-}
 
 interface UploadScreenProps {
   onFileSelected: (file: File) => void
@@ -29,7 +16,6 @@ const MAX_VIDEO_BYTES = 750 * 1024 * 1024
 export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScreenProps) {
   const [over, setOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [stagedFile, setStagedFile] = useState<File | null>(null)
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [installState, setInstallState] = useState<'accepted' | 'dismissed' | 'installing' | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -94,9 +80,9 @@ export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScre
         return
       }
       setError(null)
-      setStagedFile(file)
+      onFileSelected(file)
     },
-    [],
+    [onFileSelected],
   )
 
   async function handleInstallPwa() {
@@ -177,56 +163,6 @@ export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScre
         </div>
 
         {error && <div className="upload-error">{error}</div>}
-
-        {stagedFile && (() => {
-          const { frameCount, rawTokens } = estimateVideoTokens(stagedFile)
-          const reportTokensLow = frameCount * 25
-          const reportTokensHigh = frameCount * 80
-          const savings = rawTokens - Math.round((reportTokensLow + reportTokensHigh) / 2)
-          return (
-            <div className="upload-staged">
-              <div className="upload-staged-file">
-                <span className="mono">{stagedFile.name}</span>
-                <span className="upload-staged-size mono">
-                  {(stagedFile.size / 1024 / 1024).toFixed(1)} MB
-                </span>
-              </div>
-              <div className="upload-staged-tokens">
-                <div className="upload-token-row">
-                  <span className="upload-token-label">Raw frames → AI</span>
-                  <span className="upload-token-value mono warning">
-                    {formatTokenCount(rawTokens)} tokens
-                  </span>
-                  <span className="upload-token-hint mono">est. {frameCount} frames × ~{formatTokenCount(countImageTokens(TYPICAL_WIDTH, TYPICAL_HEIGHT))} each</span>
-                </div>
-                <div className="upload-token-row">
-                  <span className="upload-token-label">screen2issue report</span>
-                  <span className="upload-token-value mono success">
-                    {formatTokenCount(reportTokensLow)}–{formatTokenCount(reportTokensHigh)} tokens
-                  </span>
-                  <span className="upload-token-hint mono">text-only · images stay local</span>
-                </div>
-                <div className="upload-token-savings mono">
-                  saves {formatTokenCount(savings)} tokens vs raw frames
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => onFileSelected(stagedFile)}
-                >
-                  Process Recording →
-                </button>
-                <button
-                  className="btn btn-ghost"
-                  onClick={() => { setStagedFile(null); setError(null) }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )
-        })()}
 
         <div className="upload-foot">
           {surfaceFootnotes.map((text) => (

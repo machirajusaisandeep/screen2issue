@@ -337,6 +337,31 @@ textarea { resize: vertical; }
 }
 .proc-meta { font-family: var(--font-mono); font-size: 11px; color: var(--fg-4); }
 
+.proc-token-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px 16px; border-radius: var(--radius);
+  border: 1px solid color-mix(in oklab, var(--accent) 25%, var(--border));
+  background: color-mix(in oklab, var(--accent-soft) 14%, var(--bg-2));
+}
+.proc-token-head {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--fg-4);
+}
+.proc-token-rows { display: flex; flex-direction: column; gap: 5px; }
+.proc-token-row {
+  display: grid; grid-template-columns: 160px auto 1fr;
+  align-items: center; gap: 10px;
+}
+.proc-token-label { font-size: 12px; color: var(--fg-3); }
+.proc-token-val { font-size: 12px; }
+.proc-token-val.warning { color: var(--danger); }
+.proc-token-val.success { color: var(--success); }
+.proc-token-hint { font-size: 11px; color: var(--fg-4); }
+.proc-token-savings {
+  font-size: 11px; color: var(--success);
+  padding-top: 6px; border-top: 1px solid var(--border); margin-top: 2px;
+}
+
 .proc-log {
   font-family: var(--font-mono); font-size: 11px;
   color: var(--fg-3); background: var(--bg-2);
