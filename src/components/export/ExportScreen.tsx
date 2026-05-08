@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Copy, WandSparkles, FileText, Braces, Archive, Download } from 'lucide-react'
+import { Copy, WandSparkles, FileText, Braces, Archive } from 'lucide-react'
 import type { BugReport } from '@/types/report'
 import { generateMarkdown } from '@/lib/report/generateMarkdown'
 import { generateJson } from '@/lib/report/generateJson'

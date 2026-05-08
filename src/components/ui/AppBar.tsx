@@ -1,5 +1,5 @@
 import { Settings } from 'lucide-react'
-import { getSurfaceLabel, type RuntimeCapabilities } from '@/lib/runtime/capabilities'
+import type { RuntimeCapabilities } from '@/lib/runtime/capabilities'
 
 interface AppBarProps {
   step: number
@@ -10,13 +10,13 @@ interface AppBarProps {
 
 const STEPS = ['Upload', 'Process', 'Review', 'Enhance', 'Export']
 
-export function AppBar({ step, onJump, runtimeCapabilities, onOpenSettings }: AppBarProps) {
+export function AppBar({ step, onJump, onOpenSettings }: AppBarProps) {
   return (
     <header className="appbar">
       <div className="brand" onClick={() => onJump(0)}>
         <img src="/favicon.svg" alt="" aria-hidden="true" className="brand-mark" />
         <span className="brand-name">screen2issue</span>
-        <span className="brand-version mono">v0.1</span>
+        <span className="brand-beta mono">beta</span>
       </div>
 
       <nav className="steps">

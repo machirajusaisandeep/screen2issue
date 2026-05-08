@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Sparkles } from 'lucide-react'
 import type { RuntimeCapabilities } from '@/lib/runtime/capabilities'
 
 interface UploadScreenProps {
@@ -63,8 +64,15 @@ export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScre
 
   const privacyNote =
     runtimeCapabilities.surface === 'desktop'
-      ? 'Browser processing and optional enhanced local-engine steps both stay on this machine. Videos, screenshots, transcripts, and HAR files are not sent to external services.'
-      : 'All processing happens locally in your browser. Videos, screenshots, OCR text, and HAR files are not uploaded anywhere.'
+      ? 'Default processing stays on this Mac, including the bundled local-engine enrichments.'
+      : runtimeCapabilities.surface === 'pwa'
+        ? 'Core processing runs in this installed browser app.'
+        : 'Core processing runs in your browser with no account or server upload.'
+
+  const optionalAiNote =
+    runtimeCapabilities.surface === 'desktop'
+      ? 'External AI actions are optional and only run when you configure a provider and click them.'
+      : 'Optional AI actions may send selected text or screenshots to the provider you configure.'
 
   const handleFile = useCallback(
     (file: File) => {
@@ -99,14 +107,23 @@ export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScre
     <main className="screen upload-screen">
       <div className="upload-stack">
         <div className="upload-hero">
-          <div className="upload-eyebrow mono">screen recording → ai-ready bug report</div>
+          <div className="upload-flow" aria-label="Screen recording to AI-ready bug report">
+            <span className="upload-flow-badge mono">screen recording</span>
+            <span className="upload-flow-arrow" aria-hidden="true">
+              <svg width="44" height="18" viewBox="0 0 44 18" fill="none">
+                <path d="M2 9h36" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M30 2l8 7-8 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <span className="upload-flow-badge upload-flow-badge-accent mono">AI-ready bug report</span>
+          </div>
           <h1 className="upload-title">
-            Drop a screen recording. Walk away with a debuggable issue.
+            Turn a recording into a bug report engineers can act on.
           </h1>
           <p className="upload-tagline">
             {runtimeCapabilities.surface === 'desktop'
-              ? 'Pull frames, prune dupes, write notes, then optionally layer in bundled OCR and transcript enrichments before you export. Everything stays on this Mac.'
-              : 'Pull frames, prune dupes, write notes, ship a clean Markdown report you can paste into Claude, GitHub, Jira or Linear. Your video never leaves this browser.'}
+              ? 'Extract key moments, remove duplicate frames, add context, and layer in local OCR, cursor, network, and transcript evidence before exporting Markdown, JSON, or ZIP.'
+              : 'Extract key moments, remove duplicate frames, add context, and export a clean Markdown issue with screenshots, OCR, cursor activity, and network evidence.'}
           </p>
         </div>
 
@@ -173,7 +190,13 @@ export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScre
           ))}
         </div>
 
-        <div className="privacy-note">{privacyNote}</div>
+        <div className="privacy-note">
+          <div>{privacyNote}</div>
+          <div className="privacy-note-ai">
+            <Sparkles size={14} strokeWidth={1.8} aria-hidden="true" />
+            <span>{optionalAiNote}</span>
+          </div>
+        </div>
       </div>
     </main>
   )

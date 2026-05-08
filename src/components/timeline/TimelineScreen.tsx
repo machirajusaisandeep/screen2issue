@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ScanSearch, WandSparkles } from 'lucide-react'
+import { ScanSearch, WandSparkles, X } from 'lucide-react'
 import type { BugReport, CursorEvent, ExtractedFrame } from '@/types/report'
 import { countTextTokens, formatTokenCount } from '@/lib/tokens'
 import { formatTimestamp } from '@/lib/video/formatTimestamp'
@@ -82,7 +82,7 @@ export function TimelineScreen({
   frames, report, aiSettings, onChange, onReportChange, onNext,
 }: TimelineScreenProps) {
   const [layout, setLayout] = useState<Layout>('list')
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [previewFrameId, setPreviewFrameId] = useState<string | null>(null)
   const [frameAiBusy, setFrameAiBusy] = useState<Record<string, 'screenshot' | 'ocr' | null>>({})
   const [frameAiError, setFrameAiError] = useState<Record<string, string | null>>({})
 
@@ -147,6 +147,9 @@ export function TimelineScreen({
   ).length
   const transcriptCount = report.transcriptSegments.length
   const enhancedCursorFrameCount = countFramesWithEnhancedCursorData(report)
+  const previewFrame = previewFrameId
+    ? frames.find((frame) => frame.id === previewFrameId) ?? null
+    : null
 
   return (
     <main className="screen review-screen">
@@ -181,22 +184,25 @@ export function TimelineScreen({
           <div className="analysis-card analysis-card-callout">
             <div className="analysis-card-head">
               <div>
-                <h3>Automatic Processing Results</h3>
+                <h3>Review the captured evidence</h3>
                 <p>
-                  Step 2 already ran browser OCR and cursor detection locally. Review those
-                  results here, and step 4 can optionally overlay enhanced local-engine OCR,
-                  cursor labels, and transcript data on top.
+                  Keep the frames that prove the issue, add a short note where intent is unclear,
+                  and fix OCR only when it changes the story. The next step can add local-engine
+                  OCR, transcript, cursor, and HAR context.
                 </p>
               </div>
-              <div className="analysis-pill mono">browser mode baseline</div>
+              <div className="analysis-pill mono">ready for review</div>
             </div>
             <div className="analysis-stats mono">
-              <span>{ocrCount} included frames with active OCR</span>
-              <span>{report.browserCursorEvents.length} browser cursor events</span>
-              <span>{enhancedOcrCount} frames with enhanced OCR</span>
-              <span>{report.enhancedCursorEvents.length} enhanced cursor events</span>
-              <span>{transcriptCount > 0 ? `${transcriptCount} transcript segments loaded` : 'no transcript loaded yet'}</span>
-              <span>{report.harSummary ? 'HAR loaded in enhancements' : 'HAR not added yet'}</span>
+              <span className="analysis-stat"><strong>{ocrCount}</strong> frames with OCR</span>
+              <span className="analysis-stat"><strong>{report.browserCursorEvents.length}</strong> cursor events</span>
+              <span className="analysis-stat"><strong>{enhancedOcrCount}</strong> enhanced OCR frames</span>
+              <span className="analysis-stat"><strong>{report.enhancedCursorEvents.length}</strong> enhanced cursor events</span>
+              <span className="analysis-stat">
+                <strong>{transcriptCount}</strong>
+                {transcriptCount > 0 ? ' transcript segments' : ' transcript segments yet'}
+              </span>
+              <span className="analysis-stat">{report.harSummary ? 'HAR summary ready' : 'HAR can be added next'}</span>
             </div>
           </div>
         </div>
@@ -221,28 +227,54 @@ export function TimelineScreen({
 
             return (
               <div key={frame.id} className={`frame-card ${frame.included ? 'selected' : 'excluded'}`}>
-                <div
-                  className="frame-thumb"
-                  onClick={() => setExpanded(expanded === frame.id ? null : frame.id)}
-                  title="Click to expand"
-                >
-                  <img
-                    src={frame.imageUrl}
-                    alt={`Frame at ${formatTimestamp(frame.timestampMs)}`}
-                  />
-                  <span className="frame-thumb-time mono">{formatTimestamp(frame.timestampMs)}</span>
-                  <span className="frame-thumb-diff mono">Δ {frame.differenceScore.toFixed(2)}</span>
-                </div>
-                <div className="frame-token-row mono">
-                  <span className="frame-token-count">{formatTokenCount(frameTokens)} tokens</span>
-                  {hasAiContent && (
-                    <span className="frame-token-ai">+{formatTokenCount(aiTokens)} AI</span>
-                  )}
+                <div className="frame-media">
+                  <div
+                    className="frame-thumb"
+                    onClick={() => setPreviewFrameId(frame.id)}
+                    title="Open image preview"
+                  >
+                    <img
+                      src={frame.imageUrl}
+                      alt={`Frame at ${formatTimestamp(frame.timestampMs)}`}
+                    />
+                    <span className="frame-thumb-time mono">{formatTimestamp(frame.timestampMs)}</span>
+                    <span className="frame-thumb-diff mono">Δ {frame.differenceScore.toFixed(2)}</span>
+                  </div>
+                  <div className="frame-media-meta mono">
+                    <span>{formatTokenCount(frameTokens)} tokens</span>
+                    {hasAiContent && (
+                      <span className="frame-token-ai">+{formatTokenCount(aiTokens)} AI</span>
+                    )}
+                  </div>
+                  <div className="frame-actions">
+                    <div
+                      title={`Visual difference: ${(frame.differenceScore * 100).toFixed(0)}%`}
+                      className="frame-diff"
+                    >
+                      <span className="mono">change</span>
+                      <div className="diff-bar">
+                        <div className="diff-bar-fill" style={{ width: `${Math.min(100, frame.differenceScore * 180)}%` }} />
+                      </div>
+                    </div>
+                    <button
+                      className={`switch frame-include-switch ${frame.included ? 'on' : ''}`}
+                      onClick={() => onChange(updateFrame(frames, frame.id, { included: !frame.included }))}
+                      role="switch"
+                      aria-checked={frame.included}
+                      title={frame.included ? 'Included — click to exclude' : 'Excluded — click to include'}
+                      aria-label={frame.included ? 'Exclude frame' : 'Include frame'}
+                    />
+                    <button
+                      className="btn btn-ghost btn-sm frame-remove"
+                      onClick={() => onChange(frames.filter((candidate) => candidate.id !== frame.id))}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
 
                 <div className="frame-body">
                   <div className="frame-label-row">
-                    <span className="mono">note</span>
                     {typeof ocr.confidence === 'number' ? (
                       <span className="frame-inline-pill">ocr {Math.round(ocr.confidence)}%</span>
                     ) : null}
@@ -267,25 +299,31 @@ export function TimelineScreen({
                     ) : null}
                   </div>
 
-                  <textarea
-                    className="frame-note"
-                    placeholder="What's happening here? (included in the report)"
-                    value={frame.note ?? ''}
-                    onChange={(event) => onChange(updateFrame(frames, frame.id, { note: event.target.value }))}
-                  />
+                  <label className="frame-field">
+                    <span className="frame-field-head">
+                      <span>Reviewer note</span>
+                      <span>Exported with this frame</span>
+                    </span>
+                    <textarea
+                      className="frame-note"
+                      placeholder="Explain the action, visible failure, or why this moment matters."
+                      value={frame.note ?? ''}
+                      onChange={(event) => onChange(updateFrame(frames, frame.id, { note: event.target.value }))}
+                    />
+                  </label>
 
                   <div className="frame-subsection">
                     <div className="frame-subsection-head">
-                      <span className="mono">ocr</span>
+                      <span className="mono">detected text</span>
                       <span>
                         {ocr.source === 'enhanced'
-                          ? 'Enhanced local-engine OCR is active for this frame. You can edit it here.'
-                          : 'Browser OCR is active for this frame. Step 4 can replace it with enhanced OCR.'}
+                          ? 'Enhanced local OCR is active. Edit only the parts that are wrong.'
+                          : 'Browser OCR is active. Step 4 can replace it with enhanced local OCR.'}
                       </span>
                     </div>
                     <textarea
                       className="frame-note frame-note-secondary"
-                      placeholder="Visible text from OCR will appear here. You can also edit it."
+                      placeholder="No visible text detected yet, or add the important text manually."
                       value={ocr.text ?? ''}
                       onChange={(event) => onChange(updateFrameOcrText(frames, frame.id, event.target.value, ocr.source))}
                     />
@@ -293,8 +331,8 @@ export function TimelineScreen({
 
                   <div className="frame-subsection">
                     <div className="frame-subsection-head">
-                      <span className="mono">ai analysis</span>
-                      <span>AI-powered screenshot description and OCR correction.</span>
+                      <span className="mono">optional AI help</span>
+                      <span>Use this when the frame needs a clearer description or OCR cleanup.</span>
                     </div>
                     <div className="analysis-actions" style={{ flexWrap: 'wrap' }}>
                       <button
@@ -472,41 +510,8 @@ export function TimelineScreen({
                       </div>
                     </div>
                   ) : null}
-
-                  {expanded === frame.id && (
-                    <img
-                      src={frame.imageUrl}
-                      alt="Expanded frame"
-                      style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4 }}
-                    />
-                  )}
                 </div>
 
-                <div className="frame-actions">
-                  <div
-                    title={`Visual difference: ${(frame.differenceScore * 100).toFixed(0)}%`}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                  >
-                    <span className="mono" style={{ fontSize: 10, color: 'var(--fg-4)' }}>diff</span>
-                    <div className="diff-bar">
-                      <div className="diff-bar-fill" style={{ width: `${Math.min(100, frame.differenceScore * 180)}%` }} />
-                    </div>
-                  </div>
-                  <div
-                    className={`switch ${frame.included ? 'on' : ''}`}
-                    onClick={() => onChange(updateFrame(frames, frame.id, { included: !frame.included }))}
-                    role="switch"
-                    aria-checked={frame.included}
-                    title={frame.included ? 'Included — click to exclude' : 'Excluded — click to include'}
-                  />
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => onChange(frames.filter((candidate) => candidate.id !== frame.id))}
-                    style={{ padding: '2px 6px', fontSize: 11 }}
-                  >
-                    remove
-                  </button>
-                </div>
               </div>
             )
           })}
@@ -601,6 +606,44 @@ export function TimelineScreen({
           </div>
         </div>
       </aside>
+
+      {previewFrame ? (
+        <div
+          className="frame-preview-backdrop"
+          role="presentation"
+          onClick={() => setPreviewFrameId(null)}
+        >
+          <div
+            className="frame-preview-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Frame preview at ${formatTimestamp(previewFrame.timestampMs)}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="frame-preview-head">
+              <div>
+                <div className="frame-preview-title">Frame preview</div>
+                <div className="frame-preview-meta mono">
+                  {formatTimestamp(previewFrame.timestampMs)} · Δ {previewFrame.differenceScore.toFixed(2)}
+                </div>
+              </div>
+              <button
+                className="btn btn-ghost btn-icon"
+                onClick={() => setPreviewFrameId(null)}
+                aria-label="Close frame preview"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="frame-preview-image-wrap">
+              <img
+                src={previewFrame.imageUrl}
+                alt={`Frame at ${formatTimestamp(previewFrame.timestampMs)}`}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   )
 }
