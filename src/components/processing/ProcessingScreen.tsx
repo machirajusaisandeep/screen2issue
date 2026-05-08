@@ -222,7 +222,7 @@ export function ProcessingScreen({ file, onComplete, onError }: ProcessingScreen
               <span className="proc-token-label">Raw frames → AI</span>
               <span className="proc-token-val warning mono">{formatTokenCount(tokenInfo.rawTokens)} tokens</span>
               <span className="proc-token-hint mono">
-                {tokenInfo.exact ? tokenInfo.frameCount : `~${tokenInfo.frameCount}`} frames × ~{formatTokenCount(countImageTokens(1920, 1080))} each
+                {tokenInfo.exact ? tokenInfo.frameCount : `~${tokenInfo.frameCount}`} frames × {formatTokenCount(countImageTokens(1920, 1080))} each
               </span>
             </div>
             <div className="proc-token-row">

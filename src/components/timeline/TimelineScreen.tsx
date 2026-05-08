@@ -215,8 +215,8 @@ export function TimelineScreen({
 
             const frameTokens = estimateFrameTokens(frame)
             const hasAiContent = !!(frame.aiScreenshotAnalysis || frame.aiOcrCorrection)
-            const aiTokens = Math.ceil(
-              ((frame.aiScreenshotAnalysis ?? '') + (frame.aiOcrCorrection ?? '')).length / 4,
+            const aiTokens = countTextTokens(
+              (frame.aiScreenshotAnalysis ?? '') + (frame.aiOcrCorrection ?? ''),
             )
 
             return (

@@ -8,7 +8,7 @@ import { generateZipReport } from '@/lib/export/generateZip'
 import { downloadBlob, downloadMarkdown, downloadJson } from '@/lib/download'
 import { callAI, AIError } from '@/lib/ai/client'
 import type { AISettings } from '@/lib/ai/types'
-import { countTextTokens, countImageTokens, formatTokenCount as fmtTok } from '@/lib/tokens'
+import { countTextTokens, countImageTokens, formatTokenCount } from '@/lib/tokens'
 
 interface ExportScreenProps {
   report: BugReport
@@ -20,13 +20,6 @@ interface ExportScreenProps {
 
 type Tab = 'markdown' | 'prompt' | 'json' | 'enhanced-prompt'
 
-function estimateTokenCount(text: string) {
-  return countTextTokens(text)
-}
-
-function formatTokenCount(count: number) {
-  return fmtTok(count)
-}
 
 function MarkdownPreview({ text }: { text: string }) {
   const lines = text.split('\n')
@@ -60,7 +53,7 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
     0,
   )
 
-  const baseReportTokens = useMemo(() => estimateTokenCount(prompt), [prompt])
+  const baseReportTokens = useMemo(() => countTextTokens(prompt), [prompt])
 
   const aiGeneratedTokens = useMemo(() => {
     const frameAi = report.frames.reduce((sum, f) => {
@@ -289,7 +282,7 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
             >
               <span>{item.label}</span>
               <span className="export-tab-token">
-                ~{formatTokenCount(estimateTokenCount(item.text))} tokens
+                {formatTokenCount(countTextTokens(item.text))} tokens
               </span>
             </button>
           ))}
