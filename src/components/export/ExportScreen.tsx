@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Copy, WandSparkles } from 'lucide-react'
+import { Copy, WandSparkles, FileText, Braces, Archive, Download } from 'lucide-react'
 import type { BugReport } from '@/types/report'
 import { generateMarkdown } from '@/lib/report/generateMarkdown'
 import { generateJson } from '@/lib/report/generateJson'
@@ -245,13 +245,16 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
             Copy AI prompt
           </button>
           <button className="btn" onClick={() => download('bug-report.md', md)}>
-            ↓ bug-report.md
+            <FileText size={14} strokeWidth={2.2} />
+            bug-report.md
           </button>
           <button className="btn" onClick={() => download('metadata.json', json)}>
-            ↓ metadata.json
+            <Braces size={14} strokeWidth={2.2} />
+            metadata.json
           </button>
           <button className="btn" onClick={downloadZip} disabled={zipBusy}>
-            {zipBusy ? 'Building ZIP…' : '↓ screen2issue-report.zip'}
+            <Archive size={14} strokeWidth={2.2} />
+            {zipBusy ? 'Building ZIP…' : 'screen2issue-report.zip'}
           </button>
           <button
             className="btn btn-ai"
@@ -289,6 +292,7 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
           <span className="export-tab-spacer" />
           <div className="export-tab-actions">
             <button className="btn btn-ghost btn-sm" onClick={() => copy(previewText, tab)}>
+              <Copy size={13} strokeWidth={2.2} />
               copy
             </button>
           </div>

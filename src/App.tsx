@@ -16,9 +16,6 @@ import type { LocalEngineStatus } from '@/lib/localEngine/types'
 import { startBundledLocalEngine } from '@/lib/runtime/desktopLocalEngine'
 import { useAiSettings } from '@/hooks/useAiSettings'
 
-type Theme = 'dark' | 'light'
-type Accent = 'amber' | 'cyan' | 'lime'
-type Density = 'comfy' | 'compact'
 
 const STEP_INDEX: Record<AppStep, number> = {
   upload: 0, processing: 1, timeline: 2, enhancements: 3, export: 4,
@@ -72,22 +69,6 @@ export default function App() {
   const [desktopEngineStatus, setDesktopEngineStatus] = useState<LocalEngineStatus>(
     runtimeCapabilities.supportsBundledLocalEngine ? { state: 'starting' } : { state: 'idle' },
   )
-
-  // Theme / accent / density — driven by data-* attrs on <html>
-  const [theme, setTheme]     = useState<Theme>('dark')
-  const [accent, setAccent]   = useState<Accent>('amber')
-  const [density, setDensity] = useState<Density>('comfy')
-  const [tweaksOpen, setTweaksOpen] = useState(false)
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-  }, [theme])
-  useEffect(() => {
-    document.documentElement.setAttribute('data-accent', accent)
-  }, [accent])
-  useEffect(() => {
-    document.documentElement.setAttribute('data-density', density)
-  }, [density])
 
   const syncDesktopEngineStatus = useCallback((status: LocalEngineStatus) => {
     setDesktopEngineStatus(status)
@@ -268,64 +249,6 @@ export default function App() {
       )}
 
       <HintBar items={HINTS[step]} runtimeCapabilities={runtimeCapabilities} />
-
-      {/* Tweaks panel */}
-      <button
-        onClick={() => setTweaksOpen((o) => !o)}
-        style={{
-          position: 'fixed', bottom: 16, right: 16, zIndex: 200,
-          background: 'var(--bg-3)', border: '1px solid var(--border)',
-          color: 'var(--fg-3)', borderRadius: 8, padding: '6px 10px',
-          fontSize: 11, fontFamily: 'var(--font-mono)',
-        }}
-      >
-        {tweaksOpen ? '✕ tweaks' : '⚙ tweaks'}
-      </button>
-
-      {tweaksOpen && (
-        <div className="tweaks-panel">
-          <div className="tweaks-header">Tweaks</div>
-          <div className="tweaks-body">
-            <div className="tweaks-row">
-              <span className="tweaks-label">Theme</span>
-              <div className="tweaks-seg">
-                {(['dark', 'light'] as Theme[]).map((t) => (
-                  <button key={t} className={theme === t ? 'active' : ''} onClick={() => setTheme(t)}>{t}</button>
-                ))}
-              </div>
-            </div>
-            <div className="tweaks-row">
-              <span className="tweaks-label">Accent</span>
-              <div className="tweaks-seg">
-                {(['amber', 'cyan', 'lime'] as Accent[]).map((a) => (
-                  <button key={a} className={accent === a ? 'active' : ''} onClick={() => setAccent(a)}>{a}</button>
-                ))}
-              </div>
-            </div>
-            <div className="tweaks-row">
-              <span className="tweaks-label">Density</span>
-              <div className="tweaks-seg">
-                {(['comfy', 'compact'] as Density[]).map((d) => (
-                  <button key={d} className={density === d ? 'active' : ''} onClick={() => setDensity(d)}>{d}</button>
-                ))}
-              </div>
-            </div>
-            <div className="tweaks-row">
-              <span className="tweaks-label">Jump to screen</span>
-              <div className="tweaks-seg">
-                {['1 Upload', '3 Review', '4 Enhance', '5 Export'].map((label, i) => {
-                  const idx = i === 0 ? 0 : i === 1 ? 2 : i === 2 ? 3 : 4
-                  return (
-                    <button key={label} onClick={() => { jumpTo(idx); setTweaksOpen(false) }}>
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
 
