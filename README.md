@@ -244,6 +244,12 @@ HAR files may still contain sensitive URLs, query parameters, tokens, emails, or
 - Additional local analysis modules in the Enhancements step
 - Optional local AI integration
 
+## Feedback & Bug Reports
+
+Found a bug or have a suggestion? **[Submit feedback via Google Form](https://forms.gle/PZwxMvnznwaL4Vgx6)** — takes under a minute.
+
+You can also [open a GitHub issue](https://github.com/machirajusaisandeep/screen2issue/issues) if you prefer.
+
 ## Contributing
 
 Pull requests are welcome.
