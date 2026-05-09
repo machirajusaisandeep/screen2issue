@@ -1,5 +1,7 @@
 # Screen2Issue
 
+> **This project is currently in beta.** Core features are stable but rough edges exist. [Share your feedback](https://forms.gle/PZwxMvnznwaL4Vgx6) — it directly shapes v1.0.
+
 **Convert screen recordings into AI-ready bug reports locally.**
 
 Screen2Issue turns a screen recording into a structured debugging report you can review, export, and paste into AI tools without sending your recording to a server.
