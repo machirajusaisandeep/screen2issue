@@ -4,6 +4,15 @@ This folder contains everything you need to record a demo that shows every Scree
 
 ---
 
+## Demo Videos
+
+| Video | What it shows |
+|---|---|
+| [demo-app-with-issues.mov](demo-app-with-issues.mov) | The Tracer demo app being used — four reproducible bugs triggered in sequence: inverted priority filter, Invalid Date display, failed issue creation (500 error), and a status change that reverts (403) |
+| [working-of-app.mov](working-of-app.mov) | Full Screen2Issue walkthrough — upload, processing, timeline review, HAR import, AI report generation, and all three export formats |
+
+---
+
 ## What's in here
 
 | Path | Purpose |

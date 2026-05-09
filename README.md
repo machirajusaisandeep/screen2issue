@@ -4,6 +4,13 @@
 
 Screen2Issue turns a screen recording into a structured debugging report you can review, export, and paste into AI tools without sending your recording to a server.
 
+## Demo
+
+| | |
+|---|---|
+| **App in action** — four reproducible bugs triggered end-to-end | **Full walkthrough** — upload → timeline → HAR → AI report → export |
+| [▶ demo-app-with-issues.mov](demo/demo-app-with-issues.mov) | [▶ working-of-app.mov](demo/working-of-app.mov) |
+
 ## Why This Exists
 
 Bug reports often arrive as videos with no searchable text, no timeline context, and no clean way to share the issue with engineers or AI tools. Screen2Issue narrows that gap:
