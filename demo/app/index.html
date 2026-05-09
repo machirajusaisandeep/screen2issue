@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tracer — QA Workspace</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #141412;
+      --bg2:         #1c1b18;
+      --bg3:         #232220;
+      --bg-hover:    #2a2926;
+      --border:      #333230;
+      --border-s:    #4a4845;
+      --fg:          #f0ece5;
+      --fg2:         #b8b2a8;
+      --fg3:         #7a7570;
+      --accent:      #d4a96a;
+      --accent-soft: #2e2418;
+      --danger:      #e06b6b;
+      --danger-soft: #2e1818;
+      --warn:        #d4a96a;
+      --success:     #7ec98a;
+      --success-soft:#162318;
+      --radius:      6px;
+      --radius-lg:   10px;
+      font-family: 'Aptos', 'Segoe UI', 'SF Pro Display', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      color: var(--fg);
+      background: var(--bg);
+    }
+
+    body { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 220px; min-width: 220px;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 0;
+    }
+    .sidebar-logo {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sidebar-logo svg { color: var(--accent); }
+    .sidebar-logo-name { font-weight: 600; font-size: 15px; letter-spacing: -0.3px; }
+    .sidebar-logo-badge {
+      font-size: 10px; font-weight: 600; padding: 1px 5px;
+      background: var(--accent-soft); color: var(--accent);
+      border-radius: 3px; margin-left: auto;
+    }
+    .sidebar-section { padding: 12px 10px 4px; }
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--fg3); padding: 0 8px 6px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 10px; border-radius: var(--radius);
+      cursor: pointer; color: var(--fg2); font-size: 13.5px;
+      transition: background 0.1s, color 0.1s;
+      user-select: none;
+    }
+    .nav-item:hover { background: var(--bg-hover); color: var(--fg); }
+    .nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+    .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .nav-badge {
+      margin-left: auto; font-size: 10px; font-weight: 600;
+      background: var(--bg3); color: var(--fg3);
+      padding: 1px 6px; border-radius: 10px;
+    }
+    .nav-item.active .nav-badge { background: var(--accent-soft); color: var(--accent); }
+    .sidebar-footer {
+      margin-top: auto; padding: 12px 10px;
+      border-top: 1px solid var(--border);
+    }
+    .user-row {
+      display: flex; align-items: center; gap: 9px;
+      padding: 6px 10px; border-radius: var(--radius); cursor: pointer;
+    }
+    .user-row:hover { background: var(--bg-hover); }
+    .avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--accent-soft); color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+    .user-role { font-size: 11px; color: var(--fg3); }
+
+    /* ── Main ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── Topbar ── */
+    .topbar {
+      height: 52px; min-height: 52px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 24px;
+      gap: 12px; background: var(--bg);
+    }
+    .topbar-title { font-weight: 600; font-size: 15px; }
+    .topbar-crumb { color: var(--fg3); font-size: 13px; }
+    .topbar-sep { color: var(--border-s); }
+    .topbar-spacer { flex: 1; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: var(--radius);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: none; transition: opacity 0.1s, background 0.1s;
+      font-family: inherit;
+    }
+    .btn:active { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: #1a1200; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-ghost {
+      background: transparent; color: var(--fg2);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--bg-hover); color: var(--fg); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn svg { width: 14px; height: 14px; }
+
+    /* ── Content ── */
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .filter-label { font-size: 12px; color: var(--fg3); margin-right: 4px; }
+    .filter-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 20px; font-size: 12px;
+      font-weight: 500; cursor: pointer; border: 1px solid var(--border);
+      color: var(--fg2); background: var(--bg2); transition: all 0.1s;
+      font-family: inherit;
+    }
+    .filter-chip:hover { border-color: var(--border-s); color: var(--fg); }
+    .filter-chip.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+    /* ── Stats ── */
+    .stats-row { display: flex; gap: 12px; margin-bottom: 20px; }
+    .stat-card {
+      flex: 1; background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px 16px;
+    }
+    .stat-label { font-size: 11px; color: var(--fg3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .stat-value { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+    .stat-sub { font-size: 11px; color: var(--fg3); margin-top: 2px; }
+    .stat-delta { color: var(--danger); }
+    .stat-delta.up { color: var(--success); }
+
+    /* ── Table ── */
+    .table-wrap {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .table-header {
+      display: flex; align-items: center; padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+    }
+    .table-header-title { font-weight: 600; font-size: 13.5px; }
+    .table-count {
+      font-size: 11px; font-weight: 600;
+      background: var(--bg3); color: var(--fg3);
+      padding: 2px 7px; border-radius: 10px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--fg3); padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; cursor: pointer; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-hover); }
+    td { padding: 11px 16px; font-size: 13px; vertical-align: middle; }
+
+    .issue-id { font-family: monospace; font-size: 11px; color: var(--fg3); }
+    .issue-title { font-weight: 500; color: var(--fg); }
+    .issue-title small { display: block; font-size: 11px; font-weight: 400; color: var(--fg3); margin-top: 2px; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+    }
+    .badge-high    { background: rgba(224,107,107,0.15); color: #e08080; }
+    .badge-medium  { background: rgba(212,169,106,0.15); color: var(--accent); }
+    .badge-low     { background: rgba(122,117,112,0.15); color: var(--fg3); }
+    .badge-open    { background: rgba(212,169,106,0.12); color: var(--accent); }
+    .badge-progress{ background: rgba(126,201,138,0.12); color: var(--success); }
+    .badge-resolved{ background: rgba(122,117,112,0.12); color: var(--fg3); }
+
+    .assignee-cell { display: flex; align-items: center; gap: 6px; }
+    .avatar-sm {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700;
+    }
+
+    .action-btn {
+      font-size: 11px; font-weight: 500; padding: 3px 8px;
+      border-radius: 4px; border: 1px solid var(--border);
+      background: transparent; color: var(--fg2); cursor: pointer;
+      font-family: inherit; transition: all 0.1s;
+      white-space: nowrap;
+    }
+    .action-btn:hover { background: var(--bg3); color: var(--fg); border-color: var(--border-s); }
+
+    /* ── Empty state ── */
+    .empty-state {
+      display: none; flex-direction: column; align-items: center;
+      justify-content: center; padding: 60px 24px; gap: 8px;
+    }
+    .empty-state.visible { display: flex; }
+    .empty-icon { font-size: 32px; margin-bottom: 4px; }
+    .empty-title { font-size: 14px; font-weight: 600; }
+    .empty-sub { font-size: 12px; color: var(--fg3); }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); width: 500px; max-width: 96vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .modal-head {
+      display: flex; align-items: center; padding: 16px 20px;
+      border-bottom: 1px solid var(--border); gap: 10px;
+    }
+    .modal-head-title { font-weight: 600; font-size: 14px; flex: 1; }
+    .modal-close {
+      width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius); border: none; background: transparent;
+      color: var(--fg3); cursor: pointer; font-size: 16px;
+    }
+    .modal-close:hover { background: var(--bg-hover); color: var(--fg); }
+    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .modal-footer {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 12px; font-weight: 600; color: var(--fg2); }
+    .field input, .field textarea, .field select {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--fg); font-family: inherit;
+      font-size: 13px; padding: 7px 10px; outline: none; transition: border-color 0.15s;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      border-color: var(--accent);
+    }
+    .field textarea { resize: vertical; min-height: 80px; }
+    .field select option { background: var(--bg3); }
+    .field-row { display: flex; gap: 12px; }
+    .field-row .field { flex: 1; }
+
+    /* ── Toast ── */
+    .toast-stack {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px; z-index: 200;
+    }
+    .toast {
+      min-width: 280px; max-width: 380px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 12px 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      display: flex; align-items: flex-start; gap: 10px;
+      animation: slideIn 0.2s ease;
+    }
+    .toast.error   { border-color: var(--danger); }
+    .toast.success { border-color: var(--success); }
+    .toast-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .toast-body { flex: 1; }
+    .toast-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .toast-title.error   { color: var(--danger); }
+    .toast-title.success { color: var(--success); }
+    .toast-msg { font-size: 12px; color: var(--fg2); line-height: 1.4; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(16px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.2);
+      border-top-color: currentColor; border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Detail panel ── */
+    .detail-panel {
+      display: none; position: fixed; top: 0; right: 0; bottom: 0;
+      width: 400px; background: var(--bg2); border-left: 1px solid var(--border);
+      z-index: 50; overflow-y: auto; flex-direction: column;
+      box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+    }
+    .detail-panel.open { display: flex; }
+    .detail-head {
+      display: flex; align-items: center; padding: 16px 20px;
+      border-bottom: 1px solid var(--border); gap: 10px; position: sticky; top: 0;
+      background: var(--bg2);
+    }
+    .detail-id { font-family: monospace; font-size: 12px; color: var(--fg3); }
+    .detail-close {
+      margin-left: auto; width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius); border: none; background: transparent;
+      color: var(--fg3); cursor: pointer; font-size: 16px;
+    }
+    .detail-close:hover { background: var(--bg-hover); color: var(--fg); }
+    .detail-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .detail-title { font-size: 16px; font-weight: 600; line-height: 1.4; }
+    .detail-meta { display: flex; flex-direction: column; gap: 8px; }
+    .detail-meta-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .detail-meta-key { color: var(--fg3); width: 90px; flex-shrink: 0; font-size: 12px; }
+    .detail-desc { font-size: 13px; color: var(--fg2); line-height: 1.6; }
+    .detail-section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg3); }
+    .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── Invalid date highlight ── */
+    .invalid-date { color: var(--danger); font-style: italic; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="10" cy="10" r="3" fill="currentColor"/>
+      <line x1="10" y1="2" x2="10" y2="6" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="10" y1="14" x2="10" y2="18" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="2" y1="10" x2="6" y2="10" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="14" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.5"/>
+    </svg>
+    <span class="sidebar-logo-name">Tracer</span>
+    <span class="sidebar-logo-badge">BETA</span>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Workspace</div>
+    <div class="nav-item" onclick="navigate(this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item active" onclick="navigate(this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+      Issues
+      <span class="nav-badge">5</span>
+    </div>
+    <div class="nav-item" onclick="navigate(this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+      Activity
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Reports</div>
+    <div class="nav-item" onclick="navigate(this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12V4l5-2 5 2v8l-5 2-5-2z"/></svg>
+      Release v2.4
+    </div>
+    <div class="nav-item" onclick="navigate(this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L10.5 7H14l-3 2.5 1 4.5L8 11.5 4 14l1-4.5L2 7h3.5L8 2z"/></svg>
+      Sprint 12
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="avatar">AM</div>
+      <div>
+        <div class="user-name">Alex Morgan</div>
+        <div class="user-role">QA Lead</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════ MAIN ═══════════════════════════ -->
+<main class="main">
+  <div class="topbar">
+    <span class="topbar-crumb">Release v2.4</span>
+    <span class="topbar-sep">›</span>
+    <span class="topbar-title">Issues</span>
+    <div class="topbar-spacer"></div>
+    <button class="btn btn-ghost" onclick="openFilters()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M5 8h6M7 12h2"/></svg>
+      Filter
+    </button>
+    <button class="btn btn-primary" onclick="openCreateModal()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
+      New Issue
+    </button>
+  </div>
+
+  <div class="content">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Open</div>
+        <div class="stat-value" id="stat-open">4</div>
+        <div class="stat-sub stat-delta">↑ 2 since yesterday</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value">1</div>
+        <div class="stat-sub">Assigned to you</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Resolved this week</div>
+        <div class="stat-value">3</div>
+        <div class="stat-sub stat-delta up">↑ 1 from last week</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg. Resolution</div>
+        <div class="stat-value">2.4d</div>
+        <div class="stat-sub">Target: &lt; 3d</div>
+      </div>
+    </div>
+
+    <!-- Filter chips -->
+    <div class="filter-bar">
+      <span class="filter-label">Filter:</span>
+      <button class="filter-chip active" onclick="applyFilter('all', this)">All</button>
+      <button class="filter-chip" onclick="applyFilter('high', this)">High Priority</button>
+      <button class="filter-chip" onclick="applyFilter('mine', this)">Assigned to me</button>
+      <button class="filter-chip" onclick="applyFilter('open', this)">Open only</button>
+    </div>
+
+    <!-- Issues table -->
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-header-title">All Issues</span>
+        <span class="table-count" id="issue-count">5 issues</span>
+        <div style="flex:1"></div>
+        <input
+          placeholder="Search issues…"
+          style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--fg);font-family:inherit;font-size:12px;padding:5px 10px;outline:none;width:180px;"
+          oninput="searchIssues(this.value)"
+        />
+      </div>
+
+      <table id="issues-table">
+        <thead>
+          <tr>
+            <th style="width:90px">ID</th>
+            <th>Title</th>
+            <th style="width:90px">Priority</th>
+            <th style="width:110px">Status</th>
+            <th style="width:130px">Assignee</th>
+            <th style="width:130px">Last Updated</th>
+            <th style="width:110px">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="issues-body">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">No issues found</div>
+        <div class="empty-sub">Try adjusting your filters</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- ═══════════════════════════ CREATE MODAL ═══════════════════════════ -->
+<div class="modal-backdrop" id="create-modal">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-head-title">Create New Issue</span>
+      <button class="modal-close" onclick="closeCreateModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Title *</label>
+        <input id="issue-title" type="text" placeholder="Short, clear description of the bug" />
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="issue-desc" placeholder="Steps to reproduce, expected vs actual behavior…"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Priority</label>
+          <select id="issue-priority">
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Assignee</label>
+          <select id="issue-assignee">
+            <option value="alex">Alex Morgan (me)</option>
+            <option value="sarah">Sarah M.</option>
+            <option value="james">James K.</option>
+            <option value="">Unassigned</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Component</label>
+        <select id="issue-component">
+          <option>Authentication</option>
+          <option>Dashboard</option>
+          <option>Reports</option>
+          <option>Settings</option>
+          <option>API</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeCreateModal()">Cancel</button>
+      <button class="btn btn-primary" id="submit-btn" onclick="submitIssue()">
+        Create Issue
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ DETAIL PANEL ═══════════════════════════ -->
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-head">
+    <span class="detail-id" id="dp-id"></span>
+    <button class="detail-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="detail-body">
+    <div class="detail-title" id="dp-title"></div>
+    <div class="detail-meta" id="dp-meta"></div>
+    <div class="detail-section-label">Description</div>
+    <div class="detail-desc" id="dp-desc"></div>
+    <div class="detail-section-label">Actions</div>
+    <div class="detail-actions" id="dp-actions"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ TOASTS ═══════════════════════════ -->
+<div class="toast-stack" id="toast-stack"></div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────
+const ISSUES = [
+  {
+    id: 'BUG-001',
+    title: 'Login form doesn\'t clear error state on retry',
+    desc: 'When a user enters wrong credentials, an error banner appears. If they correct the password and submit again, the error banner remains visible even after a successful login attempt begins. The banner only disappears on page reload.',
+    priority: 'high',
+    status: 'open',
+    assignee: 'Sarah M.',
+    assigneeInitials: 'SM',
+    assigneeColor: '#4f46e5',
+    component: 'Authentication',
+    updated: '2026-05-07',
+    resolving: false,
+  },
+  {
+    id: 'BUG-002',
+    title: 'Export CSV includes soft-deleted records',
+    desc: 'The Issues → Export CSV action downloads all records including those marked as deleted. Deleted records should be excluded from all exports. This is a data integrity concern flagged by the compliance team.',
+    priority: 'high',
+    status: 'open',
+    assignee: 'James K.',
+    assigneeInitials: 'JK',
+    assigneeColor: '#0891b2',
+    component: 'Reports',
+    updated: '2026-05-06',
+    resolving: false,
+  },
+  {
+    id: 'BUG-003',
+    title: 'Dashboard chart missing on Safari 17',
+    desc: 'The release burndown chart on the Dashboard page fails to render on Safari 17.x. A blank white rectangle appears in place of the chart. Console shows: "TypeError: Cannot read properties of undefined (reading \'arc\')".',
+    priority: 'medium',
+    status: 'in-progress',
+    assignee: 'Alex Morgan',
+    assigneeInitials: 'AM',
+    assigneeColor: '#d4a96a',
+    component: 'Dashboard',
+    updated: null, // ← intentional bug: renders as Invalid Date
+    resolving: false,
+  },
+  {
+    id: 'BUG-004',
+    title: 'Search returns no results for exact username match',
+    desc: 'Searching for a user by their exact username (e.g. "alex.morgan") returns 0 results. Partial searches (e.g. "alex") work correctly. The issue appears to be in the exact-match branch of the search handler.',
+    priority: 'low',
+    status: 'open',
+    assignee: null,
+    assigneeInitials: '?',
+    assigneeColor: '#4a4845',
+    component: 'Search',
+    updated: '2026-05-05',
+    resolving: false,
+  },
+  {
+    id: 'BUG-005',
+    title: 'Notification badge count doesn\'t reset after reading',
+    desc: 'The red notification badge in the top-right corner continues to show the unread count after all notifications have been opened and read. The count resets only after a full page refresh.',
+    priority: 'medium',
+    status: 'open',
+    assignee: 'Alex Morgan',
+    assigneeInitials: 'AM',
+    assigneeColor: '#d4a96a',
+    component: 'Notifications',
+    updated: '2026-05-08',
+    resolving: false,
+  },
+]
+
+let currentFilter = 'all'
+let searchQuery   = ''
+
+// ── Render ─────────────────────────────────────────────────────
+function getFilteredIssues() {
+  let list = [...ISSUES]
+
+  // BUG: "high" filter is inverted — shows everything EXCEPT high priority
+  if (currentFilter === 'high') {
+    list = list.filter(i => i.priority !== 'high')
+  } else if (currentFilter === 'mine') {
+    list = list.filter(i => i.assignee === 'Alex Morgan')
+  } else if (currentFilter === 'open') {
+    list = list.filter(i => i.status === 'open')
+  }
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase()
+    list = list.filter(i =>
+      i.title.toLowerCase().includes(q) ||
+      i.id.toLowerCase().includes(q)
+    )
+  }
+
+  return list
+}
+
+function renderIssues() {
+  const list = getFilteredIssues()
+  const tbody = document.getElementById('issues-body')
+  const empty = document.getElementById('empty-state')
+  const count = document.getElementById('issue-count')
+
+  count.textContent = list.length === 1 ? '1 issue' : `${list.length} issues`
+
+  if (list.length === 0) {
+    tbody.innerHTML = ''
+    empty.classList.add('visible')
+    return
+  }
+  empty.classList.remove('visible')
+
+  tbody.innerHTML = list.map(issue => {
+    const priorityBadge = `<span class="badge badge-${issue.priority}">${issue.priority.charAt(0).toUpperCase() + issue.priority.slice(1)}</span>`
+    const statusLabel = issue.status === 'in-progress' ? 'In Progress' : issue.status.charAt(0).toUpperCase() + issue.status.slice(1)
+    const statusClass = issue.status === 'in-progress' ? 'progress' : issue.status === 'resolved' ? 'resolved' : 'open'
+    const statusBadge = `<span class="badge badge-${statusClass}">${statusLabel}</span>`
+
+    // BUG: null date renders as "Invalid Date" in the browser
+    const dateStr = issue.updated
+      ? new Date(issue.updated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : new Date(null).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+    const isInvalidDate = issue.updated === null
+    const dateCell = isInvalidDate
+      ? `<span class="invalid-date">Invalid Date</span>`
+      : dateStr
+
+    const assigneeCell = issue.assignee
+      ? `<div class="assignee-cell">
+           <div class="avatar-sm" style="background:${issue.assigneeColor}22;color:${issue.assigneeColor}">${issue.assigneeInitials}</div>
+           ${issue.assignee}
+         </div>`
+      : `<span style="color:var(--fg3)">—</span>`
+
+    const resolveLabel = issue.status === 'resolved' ? 'Reopen' : 'Resolve'
+
+    return `<tr onclick="openDetail('${issue.id}')">
+      <td><span class="issue-id">${issue.id}</span></td>
+      <td>
+        <div class="issue-title">
+          ${issue.title}
+          <small>${issue.component}</small>
+        </div>
+      </td>
+      <td>${priorityBadge}</td>
+      <td>${statusBadge}</td>
+      <td>${assigneeCell}</td>
+      <td>${dateCell}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="action-btn" onclick="toggleResolve('${issue.id}', this)">${resolveLabel}</button>
+      </td>
+    </tr>`
+  }).join('')
+}
+
+// ── Filters ────────────────────────────────────────────────────
+function applyFilter(filter, el) {
+  currentFilter = filter
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'))
+  el.classList.add('active')
+  renderIssues()
+}
+
+function searchIssues(q) {
+  searchQuery = q
+  renderIssues()
+}
+
+// ── Create Issue (broken: always 500s) ─────────────────────────
+function openCreateModal() {
+  document.getElementById('create-modal').classList.add('open')
+}
+
+function closeCreateModal() {
+  document.getElementById('create-modal').classList.remove('open')
+  document.getElementById('issue-title').value = ''
+  document.getElementById('issue-desc').value = ''
+  const btn = document.getElementById('submit-btn')
+  btn.innerHTML = 'Create Issue'
+  btn.disabled = false
+}
+
+function submitIssue() {
+  const title = document.getElementById('issue-title').value.trim()
+  if (!title) {
+    document.getElementById('issue-title').style.borderColor = 'var(--danger)'
+    setTimeout(() => document.getElementById('issue-title').style.borderColor = '', 1500)
+    return
+  }
+
+  const btn = document.getElementById('submit-btn')
+  btn.innerHTML = '<div class="spinner"></div> Creating…'
+  btn.disabled = true
+
+  // Simulated network call — always fails with 500
+  setTimeout(() => {
+    btn.innerHTML = 'Create Issue'
+    btn.disabled = false
+    closeCreateModal()
+    showToast('error', 'Failed to create issue', 'Server returned 500 Internal Server Error. The issue was not saved. Please try again or contact support if this persists.')
+  }, 2200)
+}
+
+// ── Resolve toggle (BUG: reverts after 1.5s) ───────────────────
+function toggleResolve(id, btn) {
+  const issue = ISSUES.find(i => i.id === id)
+  if (!issue || issue.resolving) return
+
+  const wasResolved = issue.status === 'resolved'
+  issue.resolving = true
+
+  btn.disabled = true
+  btn.textContent = wasResolved ? 'Reopening…' : 'Resolving…'
+
+  // Optimistic update
+  issue.status = wasResolved ? 'open' : 'resolved'
+  renderIssues()
+
+  // BUG: status reverts — the API call silently fails
+  setTimeout(() => {
+    issue.status = wasResolved ? 'resolved' : 'open'
+    issue.resolving = false
+    renderIssues()
+    showToast('error', 'Action failed', `Could not update BUG status — the change was not saved to the server. Your session may have expired.`)
+  }, 1500)
+}
+
+// ── Detail panel ───────────────────────────────────────────────
+function openDetail(id) {
+  const issue = ISSUES.find(i => i.id === id)
+  if (!issue) return
+
+  document.getElementById('dp-id').textContent = issue.id
+  document.getElementById('dp-title').textContent = issue.title
+  document.getElementById('dp-desc').textContent = issue.desc
+
+  const dateStr = issue.updated
+    ? new Date(issue.updated).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : '<span class="invalid-date">Invalid Date</span>'
+
+  document.getElementById('dp-meta').innerHTML = `
+    <div class="detail-meta-row"><span class="detail-meta-key">Priority</span><span class="badge badge-${issue.priority}">${issue.priority}</span></div>
+    <div class="detail-meta-row"><span class="detail-meta-key">Status</span><span class="badge badge-${issue.status === 'in-progress' ? 'progress' : issue.status}">${issue.status}</span></div>
+    <div class="detail-meta-row"><span class="detail-meta-key">Assignee</span>${issue.assignee || '—'}</div>
+    <div class="detail-meta-row"><span class="detail-meta-key">Component</span>${issue.component}</div>
+    <div class="detail-meta-row"><span class="detail-meta-key">Updated</span>${dateStr}</div>
+  `
+
+  document.getElementById('dp-actions').innerHTML = `
+    <button class="btn btn-ghost" style="font-size:12px" onclick="toggleResolve('${issue.id}', this)">
+      ${issue.status === 'resolved' ? 'Reopen Issue' : 'Mark as Resolved'}
+    </button>
+    <button class="btn btn-ghost" style="font-size:12px" onclick="showToast('error', 'Reassign failed', 'You do not have permission to reassign issues in this workspace.')">
+      Reassign
+    </button>
+  `
+
+  document.getElementById('detail-panel').classList.add('open')
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open')
+}
+
+// ── Toasts ─────────────────────────────────────────────────────
+function showToast(type, title, msg) {
+  const stack = document.getElementById('toast-stack')
+  const el = document.createElement('div')
+  el.className = `toast ${type}`
+  const icon = type === 'error' ? '⚠️' : type === 'success' ? '✓' : 'ℹ️'
+  el.innerHTML = `
+    <div class="toast-icon">${icon}</div>
+    <div class="toast-body">
+      <div class="toast-title ${type}">${title}</div>
+      <div class="toast-msg">${msg}</div>
+    </div>
+  `
+  stack.appendChild(el)
+  setTimeout(() => el.remove(), 5000)
+}
+
+// ── Nav ────────────────────────────────────────────────────────
+function navigate(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+  el.classList.add('active')
+}
+
+function openFilters() {
+  showToast('info', 'Advanced filters', 'Date range, component, and reporter filters are not yet implemented in this release.')
+}
+
+// ── Init ───────────────────────────────────────────────────────
+renderIssues()
+</script>
+</body>
+</html>
