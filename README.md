@@ -25,12 +25,14 @@ When someone sends you a screen recording of a bug, Screen2Issue turns that vide
 ## Local-First Privacy Promise
 
 - No account.
-- No cloud processing.
 - No analytics.
 - Browser mode has no backend and keeps video processing in-browser.
 - Optional enhanced mode sends data only to a Python engine running on `127.0.0.1` on your own machine.
-- No recordings, screenshots, transcripts, or HAR summaries are sent to external services.
 - The service worker caches the app shell and static assets only. Uploaded recordings and generated report downloads are not sent anywhere.
+
+**AI features and external data:** By default, no data leaves your device. If you configure an optional AI provider (Claude, Gemini, OpenAI, or DeepSeek) in Settings, extracted frame images from your recording are sent to that provider's API to generate the report. This is entirely opt-in. Frames are not sent anywhere unless you explicitly configure and invoke an AI provider. If you use Ollama, all inference stays local.
+
+HAR files may contain sensitive URLs, tokens, and payloads — see [HAR Support](#har-support) for details on what Screen2Issue redacts.
 
 ## Features
 

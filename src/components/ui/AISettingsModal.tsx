@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { GEMINI_MODELS, type AIProvider, type AISettings } from '@/lib/ai/types'
+import { CLAUDE_MODELS, GEMINI_MODELS, type AIProvider, type AISettings } from '@/lib/ai/types'
 
 interface AISettingsModalProps {
   open: boolean
@@ -91,18 +91,34 @@ export function AISettingsModal({ open, initialSettings, onSave, onClose }: AISe
           )}
 
           {activeTab === 'claude' && (
-            <div className="ai-field">
-              <label className="ai-field-label" htmlFor="ai-claude-key">API Key</label>
-              <input
-                id="ai-claude-key"
-                type="password"
-                className="s2i-input"
-                placeholder="sk-ant-…"
-                value={draft.claudeKey}
-                onChange={(e) => setDraft((d) => ({ ...d, claudeKey: e.target.value }))}
-                autoComplete="off"
-              />
-            </div>
+            <>
+              <div className="ai-field">
+                <label className="ai-field-label" htmlFor="ai-claude-key">API Key</label>
+                <input
+                  id="ai-claude-key"
+                  type="password"
+                  className="s2i-input"
+                  placeholder="sk-ant-…"
+                  value={draft.claudeKey}
+                  onChange={(e) => setDraft((d) => ({ ...d, claudeKey: e.target.value }))}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="ai-field">
+                <label className="ai-field-label" htmlFor="ai-claude-model">Model</label>
+                <select
+                  id="ai-claude-model"
+                  className="s2i-select"
+                  value={draft.claudeModel}
+                  onChange={(e) => setDraft((d) => ({ ...d, claudeModel: e.target.value as AISettings['claudeModel'] }))}
+                >
+                  {CLAUDE_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
+                <span className="ai-field-note">Haiku is the fastest and cheapest. Opus is the most capable.</span>
+              </div>
+            </>
           )}
 
           {activeTab === 'openai' && (
@@ -171,7 +187,10 @@ export function AISettingsModal({ open, initialSettings, onSave, onClose }: AISe
           )}
 
           <p className="ai-field-note" style={{ marginTop: 8 }}>
-            API keys are stored only in localStorage on this device.
+            API keys are stored only in localStorage on this device. Do not configure keys on a shared or public device.
+            {activeTab !== 'ollama' && (
+              <> When you generate a report, extracted frame images are sent to the selected provider's API.</>
+            )}
           </p>
         </div>
 

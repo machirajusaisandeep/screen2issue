@@ -13,11 +13,23 @@ export const GEMINI_MODELS: { id: GeminiModel; label: string }[] = [
   { id: 'gemini-1.5-pro',      label: '1.5 Pro' },
 ]
 
+export type ClaudeModel =
+  | 'claude-haiku-4-5-20251001'
+  | 'claude-sonnet-4-6'
+  | 'claude-opus-4-7'
+
+export const CLAUDE_MODELS: { id: ClaudeModel; label: string }[] = [
+  { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5 (fastest, lowest cost)' },
+  { id: 'claude-sonnet-4-6',         label: 'Sonnet 4.6 (balanced)' },
+  { id: 'claude-opus-4-7',           label: 'Opus 4.7 (most capable)' },
+]
+
 export type AISettings = {
   provider: AIProvider
   geminiKey: string
   geminiModel: GeminiModel
   claudeKey: string
+  claudeModel: ClaudeModel
   openaiKey: string
   deepseekKey: string
   ollamaBaseUrl: string

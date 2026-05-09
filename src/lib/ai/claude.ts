@@ -1,7 +1,5 @@
 import { AIError, type AICallOptions, type AICallResult } from './types'
 
-const MODEL = 'claude-opus-4-7'
-
 type ContentPart =
   | { type: 'text'; text: string }
   | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
@@ -12,6 +10,8 @@ export async function callClaude(options: AICallOptions): Promise<AICallResult> 
   if (!settings.claudeKey) {
     throw new AIError('no_key', 'No Claude API key configured. Open Settings (gear icon) to add one.')
   }
+
+  const model = settings.claudeModel ?? 'claude-haiku-4-5-20251001'
 
   const content: ContentPart[] = []
 
@@ -24,7 +24,7 @@ export async function callClaude(options: AICallOptions): Promise<AICallResult> 
   content.push({ type: 'text', text: userPrompt })
 
   const body: Record<string, unknown> = {
-    model: MODEL,
+    model,
     max_tokens: 1024,
     messages: [{ role: 'user', content }],
   }
