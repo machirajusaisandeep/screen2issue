@@ -6,6 +6,8 @@
 
 Screen2Issue turns a screen recording into a structured debugging report you can review, export, and paste into AI tools without sending your recording to a server.
 
+Start with the built-in sanitized sample project, or upload your own recording. No account, telemetry, or cloud project storage is required.
+
 ## Demo
 
 | | |
@@ -50,9 +52,12 @@ HAR files may contain sensitive URLs, tokens, and payloads — see [HAR Support]
 - Automatic OCR during processing using local `tesseract.js`
 - Automatic experimental cursor / click detection during processing
 - Timeline review with include/exclude toggles and per-frame notes
+- Draft recovery with versioned local autosave of derived artifacts (never the original recording or API keys)
+- Light, dark, and system themes with reduced-motion and keyboard support
 - Optional HAR import with sanitized request summaries and manual sync offset
 - Optional localhost-only Python engine for enhanced OCR, cursor analysis, and English audio transcription
 - AI-ready Markdown report generation
+- GitHub-ready issue Markdown and report-completeness validation
 - Sanitized JSON metadata export
 - ZIP export with `bug-report.md`, `metadata.json`, and PNG screenshots
 - Installable PWA with offline app shell support
@@ -112,9 +117,14 @@ npm run preview
 | `npm run dev` | Start the Vite dev server |
 | `npm run build` | Type-check and build the production bundle |
 | `npm run lint` | Run ESLint |
+| `npm test` | Run Vitest unit tests |
+| `npm run test:e2e` | Run Playwright workflow and accessibility tests |
+| `npm run check:bundle` | Enforce the initial-JavaScript gzip budget |
 | `npm run preview` | Preview the production build locally |
 
 `npm install` also runs a small postinstall step that copies local OCR worker/model assets into `public/tesseract/` so OCR does not need a CDN.
+
+Contributor architecture, adapter, schema, and design guidance lives in [`docs/`](docs/). The public v1.0 plan is in [`ROADMAP.md`](ROADMAP.md).
 
 ## How To Use
 
