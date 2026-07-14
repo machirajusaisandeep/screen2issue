@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { CLAUDE_MODELS, GEMINI_MODELS, type AIProvider, type AISettings } from '@/lib/ai/types'
 
 interface AISettingsModalProps {
@@ -21,13 +21,6 @@ export function AISettingsModal({ open, initialSettings, onSave, onClose }: AISe
   // activeTab tracks which provider's fields are visible — starts on the saved provider
   const [activeTab, setActiveTab] = useState<AIProvider>(initialSettings.provider)
 
-  useEffect(() => {
-    if (open) {
-      setDraft(initialSettings)
-      setActiveTab(initialSettings.provider)
-    }
-  }, [open, initialSettings])
-
   if (!open) return null
 
   function handleSave() {
@@ -38,9 +31,9 @@ export function AISettingsModal({ open, initialSettings, onSave, onClose }: AISe
 
   return (
     <div className="ai-modal-backdrop" onClick={onClose}>
-      <div className="ai-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="ai-modal" role="dialog" aria-modal="true" aria-labelledby="ai-settings-title" onClick={(e) => e.stopPropagation()}>
         <div className="ai-modal-header">
-          <span>AI Provider Settings</span>
+          <span id="ai-settings-title">AI Provider Settings</span>
           <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">✕</button>
         </div>
 

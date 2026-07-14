@@ -29,6 +29,7 @@ interface TimelineScreenProps {
 }
 
 type Layout = 'list' | 'grid'
+type FrameFilter = 'all' | 'included' | 'needs-note'
 
 function estimateFrameTokens(frame: ExtractedFrame): number {
   const base = 20
@@ -82,7 +83,10 @@ export function TimelineScreen({
   frames, report, aiSettings, onChange, onReportChange, onNext,
 }: TimelineScreenProps) {
   const [layout, setLayout] = useState<Layout>('list')
+  const [filter, setFilter] = useState<FrameFilter>('all')
   const [previewFrameId, setPreviewFrameId] = useState<string | null>(null)
+  const [expandedFrames, setExpandedFrames] = useState<Record<string, boolean>>({})
+  const [undoFrames, setUndoFrames] = useState<ExtractedFrame[] | null>(null)
   const [frameAiBusy, setFrameAiBusy] = useState<Record<string, 'screenshot' | 'ocr' | null>>({})
   const [frameAiError, setFrameAiError] = useState<Record<string, string | null>>({})
 
@@ -150,6 +154,22 @@ export function TimelineScreen({
   const previewFrame = previewFrameId
     ? frames.find((frame) => frame.id === previewFrameId) ?? null
     : null
+  const visibleFrames = frames.filter((frame) => {
+    if (filter === 'included') return frame.included
+    if (filter === 'needs-note') return !frame.note?.trim()
+    return true
+  })
+
+  function applyBulk(included: boolean) {
+    setUndoFrames(frames)
+    const visibleIds = new Set(visibleFrames.map((frame) => frame.id))
+    onChange(frames.map((frame) => visibleIds.has(frame.id) ? { ...frame, included } : frame))
+  }
+
+  function removeFrame(frameId: string) {
+    setUndoFrames(frames)
+    onChange(frames.filter((candidate) => candidate.id !== frameId))
+  }
 
   return (
     <main className="screen review-screen">
@@ -207,8 +227,31 @@ export function TimelineScreen({
           </div>
         </div>
 
+        <div className="review-toolbar" aria-label="Evidence controls">
+          <div className="layout-toggle" aria-label="Filter evidence">
+            {(['all', 'included', 'needs-note'] as const).map((value) => (
+              <button key={value} className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>
+                {value === 'needs-note' ? 'needs note' : value}
+              </button>
+            ))}
+          </div>
+          <span className="mono review-toolbar-count">{visibleFrames.length} shown</span>
+          <div className="review-toolbar-actions">
+            <button className="btn btn-ghost btn-sm" onClick={() => applyBulk(true)} disabled={visibleFrames.length === 0}>Include shown</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => applyBulk(false)} disabled={visibleFrames.length === 0}>Exclude shown</button>
+          </div>
+        </div>
+
+        {undoFrames ? (
+          <div className="review-undo" role="status">
+            Evidence updated.
+            <button className="btn btn-ghost btn-sm" onClick={() => { onChange(undoFrames); setUndoFrames(null) }}>Undo</button>
+            <button className="icon-btn" aria-label="Dismiss undo" onClick={() => setUndoFrames(null)}><X size={16} /></button>
+          </div>
+        ) : null}
+
         <div className={layout === 'grid' ? 'frame-grid' : 'frame-list'}>
-          {frames.map((frame) => {
+          {visibleFrames.map((frame) => {
             const ocr = getEffectiveFrameOcr(frame)
             const cursorData = getPreferredCursorEventsForFrame(report, frame)
             const cursorEvents = cursorData.cursorEvents.filter(
@@ -231,6 +274,14 @@ export function TimelineScreen({
                   <div
                     className="frame-thumb"
                     onClick={() => setPreviewFrameId(frame.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setPreviewFrameId(frame.id)
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
                     title="Open image preview"
                   >
                     <img
@@ -266,7 +317,7 @@ export function TimelineScreen({
                     />
                     <button
                       className="btn btn-ghost btn-sm frame-remove"
-                      onClick={() => onChange(frames.filter((candidate) => candidate.id !== frame.id))}
+                      onClick={() => removeFrame(frame.id)}
                     >
                       Remove
                     </button>
@@ -312,6 +363,15 @@ export function TimelineScreen({
                     />
                   </label>
 
+                  <button
+                    className="frame-advanced-toggle"
+                    aria-expanded={!!expandedFrames[frame.id]}
+                    onClick={() => setExpandedFrames((current) => ({ ...current, [frame.id]: !current[frame.id] }))}
+                  >
+                    {expandedFrames[frame.id] ? 'Hide advanced evidence' : 'Show OCR, cursor, network, and AI details'}
+                  </button>
+
+                  {expandedFrames[frame.id] ? <>
                   <div className="frame-subsection">
                     <div className="frame-subsection-head">
                       <span className="mono">detected text</span>
@@ -510,6 +570,7 @@ export function TimelineScreen({
                       </div>
                     </div>
                   ) : null}
+                  </> : null}
                 </div>
 
               </div>
@@ -523,6 +584,7 @@ export function TimelineScreen({
           <h4>Report title</h4>
           <input
             className="s2i-input"
+            aria-label="Report title"
             value={report.title}
             placeholder="Brief issue title…"
             onChange={(event) => onReportChange({ ...report, title: event.target.value })}
@@ -532,6 +594,7 @@ export function TimelineScreen({
           <h4>Summary</h4>
           <textarea
             className="s2i-textarea"
+            aria-label="Summary"
             value={report.summary}
             placeholder="Two or three sentences…"
             onChange={(event) => onReportChange({ ...report, summary: event.target.value })}
@@ -541,6 +604,7 @@ export function TimelineScreen({
           <h4>Observed behavior</h4>
           <textarea
             className="s2i-textarea"
+            aria-label="Observed behavior"
             value={report.observedBehavior}
             placeholder="What actually happens…"
             onChange={(event) => onReportChange({ ...report, observedBehavior: event.target.value })}
@@ -550,6 +614,7 @@ export function TimelineScreen({
           <h4>Expected behavior</h4>
           <textarea
             className="s2i-textarea"
+            aria-label="Expected behavior"
             value={report.expectedBehavior}
             placeholder="What should happen…"
             onChange={(event) => onReportChange({ ...report, expectedBehavior: event.target.value })}
@@ -575,6 +640,7 @@ export function TimelineScreen({
                 <span className="repro-num mono">{index + 1}.</span>
                 <input
                   className="repro-input"
+                  aria-label={`Reproduction step ${index + 1}`}
                   value={step}
                   placeholder={`Step ${index + 1}…`}
                   onChange={(event) => {
@@ -585,6 +651,7 @@ export function TimelineScreen({
                 />
                 <button
                   className="repro-del"
+                  aria-label={`Remove reproduction step ${index + 1}`}
                   onClick={() =>
                     onReportChange({
                       ...report,

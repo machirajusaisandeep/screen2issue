@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react'
-import { Copy, WandSparkles, FileText, Braces, Archive } from 'lucide-react'
+import { Copy, WandSparkles, FileText, Braces, Archive, Code2 } from 'lucide-react'
 import type { BugReport } from '@/types/report'
 import { generateMarkdown } from '@/lib/report/generateMarkdown'
 import { generateJson } from '@/lib/report/generateJson'
 import { generateAiPrompt } from '@/lib/report/generateAiPrompt'
 import { generateZipReport } from '@/lib/export/generateZip'
-import { downloadBlob, downloadMarkdown, downloadJson } from '@/lib/download'
+import { downloadBlob, downloadMarkdown, downloadJson, downloadText } from '@/lib/download'
 import { callAI, AIError } from '@/lib/ai/client'
 import type { AISettings } from '@/lib/ai/types'
 import { countTextTokens, countImageTokens, formatTokenCount } from '@/lib/tokens'
+import { validateReport } from '@/lib/extensions/validation'
+import { generateGitHubIssueMarkdown } from '@/lib/extensions/builtins'
 
 interface ExportScreenProps {
   report: BugReport
@@ -42,10 +44,13 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
   const [zipBusy, setZipBusy] = useState(false)
   const [promptAiBusy, setPromptAiBusy] = useState(false)
   const [promptAiError, setPromptAiError] = useState<string | null>(null)
+  const [confirmAi, setConfirmAi] = useState(false)
 
   const md     = useMemo(() => generateMarkdown(report), [report])
   const prompt = useMemo(() => generateAiPrompt(report), [report])
   const json   = useMemo(() => generateJson(report),     [report])
+  const github = useMemo(() => generateGitHubIssueMarkdown(report), [report])
+  const validationIssues = useMemo(() => validateReport(report), [report])
 
   const includedFrames = report.frames.filter((f) => f.included)
   const rawFrameTokens = includedFrames.reduce(
@@ -116,6 +121,11 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
     onToast(`${filename} downloaded`)
   }
 
+  function focusIssue(target?: string) {
+    if (!target) return
+    document.getElementById(`export-${target}`)?.focus()
+  }
+
   async function downloadZip() {
     setZipBusy(true)
     try {
@@ -133,9 +143,21 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
     <main className="screen export-screen">
       {/* ── Left: form ── */}
       <section className="export-form">
+        <div className={`export-readiness ${validationIssues.some((issue) => issue.severity === 'error') ? 'has-errors' : ''}`}>
+          <div className="export-readiness-head">
+            <strong>{validationIssues.length === 0 ? 'Report ready to share' : `${validationIssues.length} completeness check${validationIssues.length === 1 ? '' : 's'}`}</strong>
+            <span className="mono">local validation</span>
+          </div>
+          {validationIssues.map((issue) => (
+            <button key={issue.id} className={`export-issue ${issue.severity}`} onClick={() => focusIssue(issue.navigationTarget)}>
+              <span className="mono">{issue.severity}</span> {issue.message}
+            </button>
+          ))}
+        </div>
         <div className="field">
           <label className="field-label">Report title</label>
           <input
+            id="export-title"
             className="s2i-input"
             value={report.title}
             onChange={(e) => onChange({ ...report, title: e.target.value })}
@@ -145,6 +167,7 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
         <div className="field">
           <label className="field-label">Summary</label>
           <textarea
+            id="export-summary"
             className="s2i-textarea"
             value={report.summary}
             onChange={(e) => onChange({ ...report, summary: e.target.value })}
@@ -157,6 +180,7 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
         <div className="field">
           <label className="field-label">Observed behavior</label>
           <textarea
+            id="export-observed"
             className="s2i-textarea"
             value={report.observedBehavior}
             onChange={(e) => onChange({ ...report, observedBehavior: e.target.value })}
@@ -166,6 +190,7 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
         <div className="field">
           <label className="field-label">Expected behavior</label>
           <textarea
+            id="export-expected"
             className="s2i-textarea"
             value={report.expectedBehavior}
             onChange={(e) => onChange({ ...report, expectedBehavior: e.target.value })}
@@ -174,7 +199,7 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
 
         <div className="field">
           <label className="field-label">Reproduction steps</label>
-          <div className="repro-list">
+          <div className="repro-list" id="export-steps" tabIndex={-1}>
             {report.reproductionSteps.map((s, i) => (
               <div key={i} className="repro-item">
                 <span className="repro-num mono">{i + 1}.</span>
@@ -252,13 +277,17 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
             <Braces size={14} strokeWidth={2.2} />
             metadata.json
           </button>
+          <button className="btn" onClick={() => { downloadText(github, 'github-issue.md', 'text/markdown'); onToast('github-issue.md downloaded') }}>
+            <Code2 size={14} strokeWidth={2.2} />
+            github-issue.md
+          </button>
           <button className="btn" onClick={downloadZip} disabled={zipBusy}>
             <Archive size={14} strokeWidth={2.2} />
             {zipBusy ? 'Building ZIP…' : 'screen2issue-report.zip'}
           </button>
           <button
             className="btn btn-ai"
-            onClick={handleEnhancePrompt}
+            onClick={() => setConfirmAi(true)}
             disabled={promptAiBusy}
             style={{ gridColumn: '1 / -1' }}
           >
@@ -299,6 +328,21 @@ export function ExportScreen({ report, aiSettings, onChange, onBack, onToast }: 
         </div>
         <MarkdownPreview text={previewText} />
       </section>
+      {confirmAi ? (
+        <div className="ai-modal-backdrop" role="presentation" onMouseDown={() => setConfirmAi(false)}>
+          <section className="data-boundary-modal" role="alertdialog" aria-modal="true" aria-labelledby="export-ai-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="ai-modal-header" id="export-ai-title">Send report text to {aiSettings.provider}?</div>
+            <div className="ai-modal-body">
+              <div className="data-boundary-badge mono">external data boundary</div>
+              <p>The generated prompt text will be sent directly to your configured provider. The original recording, API key, and excluded frames are not sent.</p>
+            </div>
+            <div className="ai-modal-footer">
+              <button className="btn btn-ghost" onClick={() => setConfirmAi(false)}>Cancel</button>
+              <button className="btn btn-ai" onClick={() => { setConfirmAi(false); void handleEnhancePrompt() }}>Send and enhance</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   )
 }

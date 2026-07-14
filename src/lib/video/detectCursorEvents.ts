@@ -17,7 +17,9 @@ export type CursorDetectionProgress = {
 export async function detectCursorEvents(
   frames: ExtractedFrame[],
   onProgress?: (progress: CursorDetectionProgress) => void,
+  signal?: AbortSignal,
 ): Promise<CursorEvent[]> {
+  signal?.throwIfAborted()
   if (frames.length < 2) return []
 
   const events: CursorEvent[] = []
@@ -28,6 +30,7 @@ export async function detectCursorEvents(
   )
 
   for (let index = 1; index < frames.length; index += 1) {
+    signal?.throwIfAborted()
     const currentImage = await imageUrlToImageData(
       frames[index].imageUrl,
       ANALYSIS_WIDTH,

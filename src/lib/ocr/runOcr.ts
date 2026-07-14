@@ -39,7 +39,9 @@ export type OcrProgress = {
 export async function runOcr(
   frames: ExtractedFrame[],
   onProgress?: (progress: OcrProgress) => void,
+  signal?: AbortSignal,
 ): Promise<ExtractedFrame[]> {
+  signal?.throwIfAborted()
   const includedFrames = frames.filter((frame) => frame.included)
   if (includedFrames.length === 0) return frames
 
@@ -72,6 +74,7 @@ export async function runOcr(
     const ocrById = new Map<string, Pick<ExtractedFrame, 'ocrText' | 'ocrConfidence'>>()
 
     for (currentIndex = 0; currentIndex < includedFrames.length; currentIndex += 1) {
+      signal?.throwIfAborted()
       const frame = includedFrames[currentIndex]
       onProgress?.({
         completed: currentIndex,
@@ -82,6 +85,7 @@ export async function runOcr(
       })
 
       const result = await worker.recognize(frame.imageUrl)
+      signal?.throwIfAborted()
       const text = result.data.text.trim()
 
       ocrById.set(frame.id, {

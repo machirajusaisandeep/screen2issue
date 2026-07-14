@@ -2,6 +2,7 @@ import { imageUrlToBlob } from '@/lib/image'
 import type { ExtractedFrame } from '@/types/report'
 import type {
   EnhancementResult,
+  FrameExtractionResult,
   LocalEngineHealth,
   TranscriptionResult,
 } from '@/lib/localEngine/types'
@@ -36,6 +37,20 @@ export class LocalEngineRequestError extends Error {
 
 export async function checkHealth(): Promise<LocalEngineHealth> {
   return requestJson<LocalEngineHealth>('/health')
+}
+
+export async function extractVideoFrames(
+  file: File,
+  signal?: AbortSignal,
+): Promise<FrameExtractionResult> {
+  const form = new FormData()
+  form.append('video', file, file.name)
+
+  return requestJson<FrameExtractionResult>('/extract-frames', {
+    method: 'POST',
+    body: form,
+    signal,
+  })
 }
 
 export async function enhanceFrames(frames: ExtractedFrame[]): Promise<EnhancementResult> {

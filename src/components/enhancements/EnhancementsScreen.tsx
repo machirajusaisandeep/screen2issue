@@ -65,6 +65,7 @@ function EnhancementAccordionSection({
 }
 
 type LocalAction = 'check' | 'enhance' | 'transcribe' | null
+type AiAction = 'activity' | 'har' | 'transcript'
 
 export function EnhancementsScreen({
   report,
@@ -79,7 +80,8 @@ export function EnhancementsScreen({
   const [localEngineError, setLocalEngineError] = useState<string | null>(null)
   const [localEngineMessage, setLocalEngineMessage] = useState<string | null>(null)
   const [busyAction, setBusyAction] = useState<LocalAction>(null)
-  const [aiBusyAction, setAiBusyAction] = useState<'activity' | 'har' | 'transcript' | null>(null)
+  const [aiBusyAction, setAiBusyAction] = useState<AiAction | null>(null)
+  const [pendingAiAction, setPendingAiAction] = useState<AiAction | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiMessage, setAiMessage] = useState<string | null>(null)
   const reportRef = useRef(report)
@@ -307,6 +309,18 @@ export function EnhancementsScreen({
     }
   }
 
+  function requestAiAction(action: AiAction) {
+    setPendingAiAction(action)
+  }
+
+  function confirmAiAction() {
+    const action = pendingAiAction
+    setPendingAiAction(null)
+    if (action === 'activity') void handleAnalyzeActivity()
+    if (action === 'har') void handleAnalyzeHar()
+    if (action === 'transcript') void handleAnalyzeTranscript()
+  }
+
   function handleLocalEngineFailure(error: unknown, fallbackMessage: string) {
     const message = error instanceof Error ? error.message : fallbackMessage
     const state =
@@ -435,7 +449,7 @@ export function EnhancementsScreen({
               <div className="analysis-actions">
                 <button
                   className="btn btn-ai"
-                  onClick={handleAnalyzeActivity}
+                  onClick={() => requestAiAction('activity')}
                   disabled={aiBusyAction !== null}
                 >
                   <BrainCircuit size={16} strokeWidth={2.2} />
@@ -444,7 +458,7 @@ export function EnhancementsScreen({
                 {report.harSummary && (
                   <button
                     className="btn btn-ai"
-                    onClick={handleAnalyzeHar}
+                    onClick={() => requestAiAction('har')}
                     disabled={aiBusyAction !== null}
                   >
                     <FileSearch size={16} strokeWidth={2.2} />
@@ -454,7 +468,7 @@ export function EnhancementsScreen({
                 {report.transcriptSegments.length > 0 && (
                   <button
                     className="btn btn-ai"
-                    onClick={handleAnalyzeTranscript}
+                    onClick={() => requestAiAction('transcript')}
                     disabled={aiBusyAction !== null}
                   >
                     <MessagesSquare size={16} strokeWidth={2.2} />
@@ -510,6 +524,32 @@ export function EnhancementsScreen({
           </div>
         ) : null}
       </section>
+      {pendingAiAction ? (
+        <div className="ai-modal-backdrop" role="presentation" onMouseDown={() => setPendingAiAction(null)}>
+          <section
+            className="data-boundary-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="data-boundary-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="ai-modal-header" id="data-boundary-title">Confirm external AI request</div>
+            <div className="ai-modal-body">
+              <div className="data-boundary-badge mono">data leaves this device</div>
+              <p>
+                Screen2Issue will send only the relevant report text for this {pendingAiAction}
+                analysis directly to your configured {aiSettings.provider} endpoint. The original
+                recording and API key are not included in the request payload.
+              </p>
+              <p className="ai-field-note">Review your provider's retention policy before continuing.</p>
+            </div>
+            <div className="ai-modal-footer">
+              <button className="btn btn-ghost" onClick={() => setPendingAiAction(null)}>Cancel</button>
+              <button className="btn btn-ai" onClick={confirmAiAction}>Send to {aiSettings.provider}</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   )
 }

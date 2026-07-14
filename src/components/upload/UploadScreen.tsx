@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Sparkles } from 'lucide-react'
 import type { RuntimeCapabilities } from '@/lib/runtime/capabilities'
+import type { DraftSummary } from '@/lib/project/storage'
+import { ProjectStartOptions } from '@/components/project/ProjectStartOptions'
+import { validateVideoFile } from '@/lib/video/validateVideoFile'
 
 interface UploadScreenProps {
   onFileSelected: (file: File) => void
   runtimeCapabilities: RuntimeCapabilities
+  draftSummary: DraftSummary | null
+  storageLabel: string | null
+  onResumeDraft: () => void
+  onClearDraft: () => void
+  onOpenSample: () => void
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -14,7 +21,15 @@ interface BeforeInstallPromptEvent extends Event {
 
 const MAX_VIDEO_BYTES = 750 * 1024 * 1024
 
-export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScreenProps) {
+export function UploadScreen({
+  onFileSelected,
+  runtimeCapabilities,
+  draftSummary,
+  storageLabel,
+  onResumeDraft,
+  onClearDraft,
+  onOpenSample,
+}: UploadScreenProps) {
   const [over, setOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
@@ -43,41 +58,11 @@ export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScre
     }
   }, [runtimeCapabilities.surface])
 
-  const surfaceFootnotes =
-    runtimeCapabilities.surface === 'desktop'
-      ? [
-          'No cloud upload — processing stays on this Mac',
-          'Step 4 can use the bundled local engine',
-          'Export a shareable ZIP, Markdown, or JSON bundle',
-        ]
-      : runtimeCapabilities.surface === 'pwa'
-        ? [
-            'Installed browser app',
-            'No account, no telemetry',
-            'Works offline after first load',
-          ]
-        : [
-            'No upload — frames extracted in your browser',
-            'No account, no telemetry',
-            'Installable as a PWA',
-          ]
-
-  const privacyNote =
-    runtimeCapabilities.surface === 'desktop'
-      ? 'Default processing stays on this Mac, including the bundled local-engine enrichments.'
-      : runtimeCapabilities.surface === 'pwa'
-        ? 'Core processing runs in this installed browser app.'
-        : 'Core processing runs in your browser with no account or server upload.'
-
-  const optionalAiNote =
-    runtimeCapabilities.surface === 'desktop'
-      ? 'External AI actions are optional and only run when you configure a provider and click them.'
-      : 'Optional AI actions may send selected text or screenshots to the provider you configure.'
-
   const handleFile = useCallback(
-    (file: File) => {
-      if (!file.type.startsWith('video/') && !/\.(mp4|webm|mov)$/i.test(file.name)) {
-        setError(`Unsupported format: "${file.name}". Use .mp4, .webm, or .mov.`)
+    async (file: File) => {
+      const validation = await validateVideoFile(file)
+      if (!validation.valid) {
+        setError(validation.message)
         return
       }
       if (file.size > MAX_VIDEO_BYTES) {
@@ -107,23 +92,11 @@ export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScre
     <main className="screen upload-screen">
       <div className="upload-stack">
         <div className="upload-hero">
-          <div className="upload-flow" aria-label="Screen recording to AI-ready bug report">
-            <span className="upload-flow-badge mono">screen recording</span>
-            <span className="upload-flow-arrow" aria-hidden="true">
-              <svg width="44" height="18" viewBox="0 0 44 18" fill="none">
-                <path d="M2 9h36" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M30 2l8 7-8 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-            <span className="upload-flow-badge upload-flow-badge-accent mono">AI-ready bug report</span>
-          </div>
           <h1 className="upload-title">
-            Turn a recording into a bug report engineers can act on.
+            Turn a screen recording into a clear bug report.
           </h1>
           <p className="upload-tagline">
-            {runtimeCapabilities.surface === 'desktop'
-              ? 'Extract key moments, remove duplicate frames, add context, and layer in local OCR, cursor, network, and transcript evidence before exporting Markdown, JSON, or ZIP.'
-              : 'Extract key moments, remove duplicate frames, add context, and export a clean Markdown issue with screenshots, OCR, cursor activity, and network evidence.'}
+            Drop in a recording. Screen2Issue finds the key moments and prepares the evidence locally.
           </p>
         </div>
 
@@ -147,15 +120,24 @@ export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScre
 
         <div
           className={`dropzone${over ? ' over' : ''}`}
+          role="button"
+          tabIndex={0}
+          aria-describedby="dropzone-formats dropzone-privacy"
           onDragOver={(e) => { e.preventDefault(); setOver(true) }}
           onDragLeave={() => setOver(false)}
           onDrop={(e) => {
             e.preventDefault()
             setOver(false)
             const f = e.dataTransfer.files[0]
-            if (f) handleFile(f)
+            if (f) void handleFile(f)
           }}
           onClick={() => inputRef.current?.click()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              inputRef.current?.click()
+            }
+          }}
         >
           <div className="dropzone-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
@@ -168,35 +150,36 @@ export function UploadScreen({ onFileSelected, runtimeCapabilities }: UploadScre
             <div className="dropzone-headline">
               Drop a recording here, or <strong>choose a file</strong>
             </div>
-            <div className="dropzone-meta">.mp4 · .webm · .mov · up to ~750 MB</div>
+            <div id="dropzone-formats" className="dropzone-meta">.mp4 · .webm · .mov · up to ~750 MB</div>
           </div>
           <input
             ref={inputRef}
             type="file"
-            accept="video/*"
+            accept=".mp4,.webm,.mov,video/mp4,video/webm,video/quicktime"
             style={{ display: 'none' }}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) void handleFile(f)
+              e.currentTarget.value = ''
+            }}
           />
         </div>
 
-        {error && <div className="upload-error">{error}</div>}
+        {error && <div className="upload-error" role="alert">{error}</div>}
 
-        <div className="upload-foot">
-          {surfaceFootnotes.map((text) => (
-            <div key={text} className="upload-foot-item">
-              <span className="upload-foot-dot" aria-hidden="true" />
-              <span>{text}</span>
-            </div>
-          ))}
+        <div id="dropzone-privacy" className="upload-trust mono">
+          <span>{runtimeCapabilities.surface === 'desktop' ? 'STAYS ON THIS MAC' : 'PROCESSED ON THIS DEVICE'}</span>
+          <span aria-hidden="true">·</span>
+          <span>AI OPTIONAL</span>
         </div>
 
-        <div className="privacy-note">
-          <div>{privacyNote}</div>
-          <div className="privacy-note-ai">
-            <Sparkles size={14} strokeWidth={1.8} aria-hidden="true" />
-            <span>{optionalAiNote}</span>
-          </div>
-        </div>
+        <ProjectStartOptions
+          draft={draftSummary}
+          storageLabel={storageLabel}
+          onResume={onResumeDraft}
+          onClearDraft={onClearDraft}
+          onOpenSample={onOpenSample}
+        />
       </div>
     </main>
   )

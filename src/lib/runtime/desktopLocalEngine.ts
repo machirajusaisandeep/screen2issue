@@ -8,7 +8,7 @@ type StartLocalEngineResponse = {
   status?: 'already_running' | 'helper_ready' | 'port_conflict' | 'starting'
 }
 
-const DEFAULT_START_TIMEOUT_MS = 15_000
+const DEFAULT_START_TIMEOUT_MS = 30_000
 const POLL_INTERVAL_MS = 400
 
 export async function startBundledLocalEngine(

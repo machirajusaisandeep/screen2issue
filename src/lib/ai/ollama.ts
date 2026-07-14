@@ -45,7 +45,9 @@ export async function callOllama(options: AICallOptions): Promise<AICallResult> 
     try {
       const data = await response.json() as { error?: string }
       if (data.error) message = data.error
-    } catch {}
+    } catch {
+      // Keep the status-based fallback when the provider returns a non-JSON error.
+    }
     throw new AIError('api_error', message)
   }
 

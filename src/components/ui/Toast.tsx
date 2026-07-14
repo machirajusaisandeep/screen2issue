@@ -18,8 +18,8 @@ export function Toast({ message, onDone }: ToastProps) {
 
   if (!visible) return null
   return (
-    <div className="toast">
-      <span className="dot" />
+    <div className="toast" role="status" aria-live="polite">
+      <span className="dot" aria-hidden="true" />
       {message}
     </div>
   )

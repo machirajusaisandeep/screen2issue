@@ -30,8 +30,10 @@ export type ProgressCallback = (
 export async function extractFrames(
   file: File,
   onProgress?: ProgressCallback,
+  signal?: AbortSignal,
 ): Promise<ExtractedFrame[]> {
   return new Promise((resolve, reject) => {
+    signal?.throwIfAborted()
     const video = document.createElement('video')
     video.muted = true
     video.playsInline = true
@@ -47,8 +49,20 @@ export async function extractFrames(
     thumbCanvas.height = COMPARE_HEIGHT
     const thumbCtx = thumbCanvas.getContext('2d')!
 
-    video.addEventListener('error', () => {
+    const cleanup = () => {
+      signal?.removeEventListener('abort', handleAbort)
       URL.revokeObjectURL(objectUrl)
+    }
+    const handleAbort = () => {
+      video.removeAttribute('src')
+      video.load()
+      cleanup()
+      reject(new DOMException('Processing cancelled.', 'AbortError'))
+    }
+    signal?.addEventListener('abort', handleAbort, { once: true })
+
+    video.addEventListener('error', () => {
+      cleanup()
       reject(
         new Error(
           'This browser could not decode the video. Try .mp4 (H.264) or .webm. ' +
@@ -58,11 +72,13 @@ export async function extractFrames(
     })
 
     video.addEventListener('loadedmetadata', async () => {
-      onProgress?.('loading', 100)
+      try {
+        signal?.throwIfAborted()
+        onProgress?.('loading', 100)
 
       const duration = video.duration
       if (!isFinite(duration) || duration === 0) {
-        URL.revokeObjectURL(objectUrl)
+        cleanup()
         reject(new Error('Could not determine video duration.'))
         return
       }
@@ -83,10 +99,11 @@ export async function extractFrames(
       let prevThumbData: ImageData | null = null
 
       for (let i = 0; i < seekTimes.length; i++) {
+        signal?.throwIfAborted()
         const t = seekTimes[i]
 
         // Seek to timestamp and wait for the browser to render the frame
-        await seekTo(video, t)
+        await seekTo(video, t, signal)
 
         // Draw full-resolution frame for the exported thumbnail
         fullCtx.drawImage(video, 0, 0, fullCanvas.width, fullCanvas.height)
@@ -123,20 +140,30 @@ export async function extractFrames(
       const capped = capFrames(allFrames, MAX_FRAMES)
 
       onProgress?.('timeline', 100)
-      URL.revokeObjectURL(objectUrl)
+      cleanup()
       resolve(capped)
+      } catch (error) {
+        cleanup()
+        reject(error)
+      }
     })
   })
 }
 
 /** Seeks the video to a specific time and resolves when the frame is ready. */
-function seekTo(video: HTMLVideoElement, time: number): Promise<void> {
-  return new Promise((resolve) => {
+function seekTo(video: HTMLVideoElement, time: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
     const onSeeked = () => {
       video.removeEventListener('seeked', onSeeked)
+      signal?.removeEventListener('abort', onAbort)
       resolve()
     }
+    const onAbort = () => {
+      video.removeEventListener('seeked', onSeeked)
+      reject(new DOMException('Processing cancelled.', 'AbortError'))
+    }
     video.addEventListener('seeked', onSeeked)
+    signal?.addEventListener('abort', onAbort, { once: true })
     video.currentTime = time
   })
 }

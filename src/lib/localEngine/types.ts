@@ -40,6 +40,20 @@ export type TranscriptionResult = {
   warnings?: string[]
 }
 
+export type FrameExtractionResult = {
+  frames: Array<{
+    id: string
+    timestampMs: number
+    imageUrl: string
+    width: number
+    height: number
+    differenceScore: number
+    included: boolean
+  }>
+  durationMs: number
+  decoder: 'bundled-ffmpeg' | string
+}
+
 export type LocalEngineHealth = {
   ok: boolean
   engine: string

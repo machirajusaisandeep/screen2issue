@@ -1,13 +1,11 @@
-import { useCallback, useEffect, useEffectEvent, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useEffectEvent, useState } from 'react'
 import { AppBar } from '@/components/ui/AppBar'
 import { HintBar } from '@/components/ui/HintBar'
 import { Toast } from '@/components/ui/Toast'
 import { AISettingsModal } from '@/components/ui/AISettingsModal'
 import { UploadScreen } from '@/components/upload/UploadScreen'
-import { ProcessingScreen } from '@/components/processing/ProcessingScreen'
-import { TimelineScreen } from '@/components/timeline/TimelineScreen'
-import { EnhancementsScreen } from '@/components/enhancements/EnhancementsScreen'
-import { ExportScreen } from '@/components/export/ExportScreen'
+import { PrivacyStorageModal } from '@/components/ui/PrivacyStorageModal'
+import { SmallScreenGuard } from '@/components/ui/SmallScreenGuard'
 import { waitForLocalEngineHealth } from '@/lib/runtime/desktopLocalEngine'
 import { resolveRuntimeCapabilities, type RuntimeCapabilities } from '@/lib/runtime/capabilities'
 import type { AppStep, BugReport, CursorEvent, ExtractedFrame } from '@/types/report'
@@ -15,6 +13,22 @@ import { captureEnvironmentMetadata } from '@/lib/report/captureEnvironment'
 import type { LocalEngineStatus } from '@/lib/localEngine/types'
 import { startBundledLocalEngine } from '@/lib/runtime/desktopLocalEngine'
 import { useAiSettings } from '@/hooks/useAiSettings'
+import { useTheme } from '@/hooks/useTheme'
+import { createSampleReport } from '@/lib/project/sampleProject'
+import {
+  clearProjectDraft,
+  estimateProjectStorage,
+  getDraftSummary,
+  loadProjectDraft,
+  ProjectStorageError,
+  saveProjectDraft,
+  type DraftSummary,
+} from '@/lib/project/storage'
+
+const ProcessingScreen = lazy(() => import('@/components/processing/ProcessingScreen').then((module) => ({ default: module.ProcessingScreen })))
+const TimelineScreen = lazy(() => import('@/components/timeline/TimelineScreen').then((module) => ({ default: module.TimelineScreen })))
+const EnhancementsScreen = lazy(() => import('@/components/enhancements/EnhancementsScreen').then((module) => ({ default: module.EnhancementsScreen })))
+const ExportScreen = lazy(() => import('@/components/export/ExportScreen').then((module) => ({ default: module.ExportScreen })))
 
 
 const STEP_INDEX: Record<AppStep, number> = {
@@ -60,12 +74,17 @@ interface ProcessingResult {
 export default function App() {
   const [runtimeCapabilities] = useState<RuntimeCapabilities>(() => resolveRuntimeCapabilities())
   const { settings: aiSettings, saveSettings: saveAiSettings } = useAiSettings()
+  const theme = useTheme()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
   const [step, setStep]       = useState<AppStep>('upload')
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [frames, setFrames]   = useState<ExtractedFrame[]>([])
   const [report, setReport]   = useState<BugReport | null>(null)
   const [toast, setToast]     = useState<string | null>(null)
+  const [draftSummary, setDraftSummary] = useState<DraftSummary | null>(null)
+  const [projectId, setProjectId] = useState<string | undefined>()
+  const [storageLabel, setStorageLabel] = useState<string | null>(null)
   const [desktopEngineStatus, setDesktopEngineStatus] = useState<LocalEngineStatus>(
     runtimeCapabilities.supportsBundledLocalEngine ? { state: 'starting' } : { state: 'idle' },
   )
@@ -74,6 +93,50 @@ export default function App() {
     setDesktopEngineStatus(status)
     setReport((current) => current ? { ...current, localEngineStatus: status } : current)
   }, [])
+
+  const refreshDraftMetadata = useCallback(async () => {
+    try {
+      setDraftSummary(await getDraftSummary())
+    } catch (error) {
+      if (error instanceof ProjectStorageError && error.kind === 'corrupt') {
+        setToast('Saved project needs to be cleared before it can be resumed')
+      }
+    }
+    const estimate = await estimateProjectStorage()
+    if (estimate) setStorageLabel(formatStorage(estimate.usage, estimate.quota))
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void refreshDraftMetadata(), 0)
+    return () => window.clearTimeout(timer)
+  }, [refreshDraftMetadata])
+
+  useEffect(() => {
+    if (!report || step === 'upload' || step === 'processing') return
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void saveProjectDraft(report, step, projectId)
+        .then((document) => {
+          if (cancelled) return
+          setProjectId(document.projectId)
+          setDraftSummary({
+            projectId: document.projectId,
+            title: document.report.title,
+            videoName: document.report.videoName,
+            updatedAt: document.updatedAt,
+            frameCount: document.report.frames.length,
+            currentStep: document.currentStep,
+          })
+        })
+        .catch((error: unknown) => {
+          if (!cancelled) setToast(error instanceof Error ? error.message : 'Project autosave failed')
+        })
+    }, 900)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [projectId, report, step])
 
   useEffect(() => {
     if (!runtimeCapabilities.supportsBundledLocalEngine) return
@@ -154,10 +217,12 @@ export default function App() {
   }, [])
 
   const handleFileSelected = useCallback((file: File) => {
+    void clearProjectDraft().then(() => refreshDraftMetadata())
+    setProjectId(undefined)
     setVideoFile(file)
     setReport(makeEmptyReport(file, desktopEngineStatus))
     setStep('processing')
-  }, [desktopEngineStatus])
+  }, [desktopEngineStatus, refreshDraftMetadata])
 
   const handleProcessingComplete = useCallback(({ frames: processedFrames, cursorEvents }: ProcessingResult) => {
     setFrames(processedFrames)
@@ -179,8 +244,8 @@ export default function App() {
     setStep('timeline')
   }, [desktopEngineStatus])
 
-  const handleProcessingError = useCallback(() => {
-    setTimeout(() => setStep('upload'), 4000)
+  const handleProcessingError = useCallback((message: string) => {
+    setToast(message)
   }, [])
 
   const handleFramesChange = useCallback((updated: ExtractedFrame[]) => {
@@ -195,6 +260,39 @@ export default function App() {
 
   const showToast = useCallback((msg: string) => setToast(msg), [])
 
+  const handleResumeDraft = useCallback(async () => {
+    try {
+      const restored = await loadProjectDraft()
+      if (!restored) return
+      setProjectId(restored.document.projectId)
+      setReport(restored.report)
+      setFrames(restored.report.frames)
+      setVideoFile(null)
+      setStep(restored.document.currentStep)
+      setToast('Saved project restored')
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : 'Saved project could not be restored')
+    }
+  }, [])
+
+  const handleClearDraft = useCallback(async () => {
+    await clearProjectDraft()
+    setDraftSummary(null)
+    setProjectId(undefined)
+    await refreshDraftMetadata()
+    setToast('Saved project cleared')
+  }, [refreshDraftMetadata])
+
+  const handleOpenSample = useCallback(() => {
+    const sample = createSampleReport(desktopEngineStatus)
+    setProjectId(undefined)
+    setVideoFile(null)
+    setReport(sample)
+    setFrames(sample.frames)
+    setStep('timeline')
+    setToast('Sanitized sample project opened')
+  }, [desktopEngineStatus])
+
   return (
     <>
       <AppBar
@@ -202,19 +300,31 @@ export default function App() {
         onJump={jumpTo}
         runtimeCapabilities={runtimeCapabilities}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenPrivacy={() => setPrivacyOpen(true)}
+        themePreference={theme.preference}
+        onCycleTheme={theme.cyclePreference}
       />
 
+      <Suspense fallback={<div className="screen-loading" role="status">Loading workspace…</div>}>
       {step === 'upload' && (
         <UploadScreen
           onFileSelected={handleFileSelected}
           runtimeCapabilities={runtimeCapabilities}
+          draftSummary={draftSummary}
+          storageLabel={storageLabel}
+          onResumeDraft={() => void handleResumeDraft()}
+          onClearDraft={() => void handleClearDraft()}
+          onOpenSample={handleOpenSample}
         />
       )}
       {step === 'processing' && videoFile && (
         <ProcessingScreen
           file={videoFile}
+          runtimeCapabilities={runtimeCapabilities}
+          localEngineStatus={desktopEngineStatus}
           onComplete={handleProcessingComplete}
           onError={handleProcessingError}
+          onCancel={() => setStep('upload')}
         />
       )}
       {step === 'timeline' && report && (
@@ -247,17 +357,42 @@ export default function App() {
           onToast={showToast}
         />
       )}
+      </Suspense>
 
       <HintBar items={HINTS[step]} />
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
 
-      <AISettingsModal
-        open={settingsOpen}
-        initialSettings={aiSettings}
-        onSave={saveAiSettings}
-        onClose={() => setSettingsOpen(false)}
+      {settingsOpen ? (
+        <AISettingsModal
+          open
+          initialSettings={aiSettings}
+          onSave={saveAiSettings}
+          onClose={() => setSettingsOpen(false)}
+        />
+      ) : null}
+      <PrivacyStorageModal
+        open={privacyOpen}
+        storageLabel={storageLabel}
+        hasDraft={draftSummary != null}
+        onClearDraft={() => void handleClearDraft()}
+        onClose={() => setPrivacyOpen(false)}
+        runtime={runtimeCapabilities}
+        localEngineStatus={desktopEngineStatus}
       />
+      <SmallScreenGuard />
     </>
   )
+}
+
+function formatStorage(usage: number, quota: number): string {
+  const used = formatBytes(usage)
+  const total = formatBytes(quota)
+  return quota > 0 ? `${used} used of ${total}` : `${used} used`
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(0, Math.round(bytes / 1024))} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`
 }
