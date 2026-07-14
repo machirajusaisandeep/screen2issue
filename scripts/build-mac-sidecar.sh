@@ -37,7 +37,8 @@ mkdir -p "$RESOURCE_ROOT" "$BIN_DIR" "$FFMPEG_DIR" "$TESSDATA_DIR" "$MODEL_TARGE
 "$PYINSTALLER_BIN" \
   --noconfirm \
   --clean \
-  --onefile \
+  --onedir \
+  --paths "$ROOT_DIR/python-engine" \
   "$ROOT_DIR/python-engine/packaging/desktop_entry.py" \
   --name "screen2issue-local-engine-aarch64-apple-darwin" \
   --distpath "$BIN_DIR" \
@@ -60,7 +61,19 @@ cp "$TESS_PREFIX/share/tessdata/osd.traineddata" "$TESSDATA_DIR/osd.traineddata"
 cp "$TESS_PREFIX/share/tessdata/snum.traineddata" "$TESSDATA_DIR/snum.traineddata"
 rsync -a "$MODEL_SOURCE_DIR/" "$MODEL_TARGET_DIR/"
 
-chmod +x "$BIN_DIR/screen2issue-local-engine-aarch64-apple-darwin"
+while IFS= read -r -d '' linked_file; do
+  materialized_file="${linked_file}.materialized"
+  if [[ -d "$linked_file" ]]; then
+    cp -RL "$linked_file" "$materialized_file"
+  else
+    cp -L "$linked_file" "$materialized_file"
+  fi
+  rm "$linked_file"
+  mv "$materialized_file" "$linked_file"
+done < <(find "$BIN_DIR/screen2issue-local-engine-aarch64-apple-darwin" -type l -print0)
+
+chmod +x "$BIN_DIR/screen2issue-local-engine-aarch64-apple-darwin/screen2issue-local-engine-aarch64-apple-darwin"
 chmod +x "$FFMPEG_DIR/ffmpeg" "$FFMPEG_DIR/ffprobe" "$TESSERACT_DIR/tesseract"
+chmod -R u+rwX "$RESOURCE_ROOT"
 
 echo "Desktop sidecar resources prepared in $RESOURCE_ROOT"

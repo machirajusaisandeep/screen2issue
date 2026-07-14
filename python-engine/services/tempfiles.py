@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import UploadFile
 
 
-TMP_ROOT = Path(__file__).resolve().parents[1] / "tmp"
+TMP_ROOT = Path(tempfile.gettempdir()) / "screen2issue-local-engine"
 TMP_ROOT.mkdir(parents=True, exist_ok=True)
 
 
@@ -23,6 +23,9 @@ def managed_temp_dir(prefix: str):
 
 async def save_upload_file(upload: UploadFile, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    contents = await upload.read()
-    destination.write_bytes(contents)
-    await upload.close()
+    try:
+        with destination.open("wb") as output:
+            while chunk := await upload.read(1024 * 1024):
+                output.write(chunk)
+    finally:
+        await upload.close()

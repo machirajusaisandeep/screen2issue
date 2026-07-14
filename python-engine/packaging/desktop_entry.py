@@ -34,6 +34,10 @@ def configure_runtime(resource_root: Path) -> None:
         str(tesseract_dir / "tesseract"),
     )
     os.environ.setdefault(
+        "SCREEN2ISSUE_FFMPEG_BINARY",
+        str(ffmpeg_dir / "ffmpeg"),
+    )
+    os.environ.setdefault(
         "SCREEN2ISSUE_FFPROBE_BINARY",
         str(ffmpeg_dir / "ffprobe"),
     )

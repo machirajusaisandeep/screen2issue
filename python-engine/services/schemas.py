@@ -49,6 +49,22 @@ class EnhancementResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class ExtractedFrameModel(BaseModel):
+    id: str
+    timestampMs: int
+    imageUrl: str
+    width: int
+    height: int
+    differenceScore: float
+    included: bool = True
+
+
+class FrameExtractionResponse(BaseModel):
+    frames: list[ExtractedFrameModel]
+    durationMs: int
+    decoder: str
+
+
 class TranscriptionResponse(BaseModel):
     hasAudio: bool
     segments: list[TranscriptSegmentModel] = Field(default_factory=list)

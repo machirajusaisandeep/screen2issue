@@ -8,11 +8,10 @@ from typing import Annotated
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from services.audio_transcription import transcribe_video_file
-from services.frame_analysis import analyze_frames
 from services.schemas import (
     EnhanceFramesManifest,
     EnhancementResponse,
+    FrameExtractionResponse,
     HealthResponse,
     TranscriptionResponse,
 )
@@ -48,8 +47,28 @@ async def health() -> HealthResponse:
         ok=True,
         engine="screen2issue-local-engine",
         version=app.version,
-        features=["ocr", "cursor_detection", "audio_transcription"],
+        features=["frame_extraction", "ocr", "cursor_detection", "audio_transcription"],
     )
+
+
+@app.post("/extract-frames", response_model=FrameExtractionResponse)
+async def extract_frames(
+    video: Annotated[UploadFile, File(...)],
+) -> FrameExtractionResponse:
+    from services.video_frames import extract_video_frames
+
+    with managed_temp_dir("extract-frames-") as temp_dir:
+        video_name = Path(video.filename or "uploaded-video").name
+        target_path = temp_dir / video_name
+        await save_upload_file(video, target_path)
+
+        logger.info("extract_frames received video_name=%s", video_name)
+
+        try:
+            return extract_video_frames(target_path, temp_dir / "frames")
+        except Exception as error:  # pragma: no cover - surfaced to frontend
+            logger.exception("extract_frames failed: %s", error.__class__.__name__)
+            raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/enhance-frames", response_model=EnhancementResponse)
@@ -57,6 +76,8 @@ async def enhance_frames(
     manifest: Annotated[UploadFile, File(...)],
     frames: Annotated[list[UploadFile], File(...)],
 ) -> EnhancementResponse:
+    from services.frame_analysis import analyze_frames
+
     parsed_manifest = _parse_manifest(manifest)
 
     with managed_temp_dir("enhance-frames-") as temp_dir:
@@ -88,6 +109,8 @@ async def transcribe_video(
     video: Annotated[UploadFile, File(...)],
     manifest: UploadFile | None = File(default=None),
 ) -> TranscriptionResponse:
+    from services.audio_transcription import transcribe_video_file
+
     if manifest is not None:
         _parse_json_upload(manifest)
 
@@ -109,6 +132,8 @@ async def transcribe_video(
 async def analyze_video(
     video: Annotated[UploadFile, File(...)],
 ) -> EnhancementResponse:
+    from services.audio_transcription import transcribe_video_file
+
     with managed_temp_dir("analyze-video-") as temp_dir:
         video_name = video.filename or "uploaded-video"
         target_path = temp_dir / video_name

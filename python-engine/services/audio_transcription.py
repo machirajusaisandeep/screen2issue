@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import shutil
-import subprocess
 from functools import lru_cache
 import os
 from pathlib import Path
 
+import av
 from faster_whisper import WhisperModel
 
 from services.schemas import TranscriptSegmentModel, TranscriptionResponse
@@ -58,29 +57,11 @@ def transcribe_video_file(video_path: Path) -> TranscriptionResponse:
 
 
 def detect_audio_stream(video_path: Path) -> bool:
-    ffprobe_path = os.environ.get("SCREEN2ISSUE_FFPROBE_BINARY") or shutil.which("ffprobe")
-    if not ffprobe_path:
-        return True
-
-    result = subprocess.run(
-        [
-            ffprobe_path,
-            "-v",
-            "error",
-            "-select_streams",
-            "a",
-            "-show_entries",
-            "stream=index",
-            "-of",
-            "csv=p=0",
-            str(video_path),
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    return bool(result.stdout.strip())
+    try:
+        with av.open(str(video_path)) as container:
+            return any(stream.type == "audio" for stream in container.streams)
+    except av.error.FFmpegError:
+        return False
 
 
 @lru_cache(maxsize=1)

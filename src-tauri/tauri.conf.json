@@ -43,7 +43,7 @@
       "icons/icon.icns"
     ],
     "resources": [
-      "resources/local-engine/**/*",
+      "resources/local-engine",
       "assets/dmg-background.png"
     ],
     "macOS": {

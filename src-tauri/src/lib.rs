@@ -9,8 +9,8 @@ use tauri::Manager;
 const LOCAL_ENGINE_HOST: &str = "127.0.0.1";
 const LOCAL_ENGINE_PORT: u16 = 8765;
 const LOCAL_ENGINE_RELATIVE_BIN: &str =
-    "local-engine/bin/screen2issue-local-engine-aarch64-apple-darwin";
-const LOCAL_ENGINE_RELATIVE_ROOT: &str = "local-engine";
+    "resources/local-engine/bin/screen2issue-local-engine-aarch64-apple-darwin/screen2issue-local-engine-aarch64-apple-darwin";
+const LOCAL_ENGINE_RELATIVE_ROOT: &str = "resources/local-engine";
 
 #[derive(Serialize)]
 struct StartLocalEngineResponse {
