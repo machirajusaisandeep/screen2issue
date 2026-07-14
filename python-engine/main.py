@@ -31,7 +31,7 @@ ALLOWED_ORIGINS = [
     "tauri://localhost",
 ]
 
-app = FastAPI(title="Screen2Issue Local Engine", version="0.1.0")
+app = FastAPI(title="Screen2Issue Local Engine", version="0.2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,

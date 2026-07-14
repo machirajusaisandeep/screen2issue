@@ -46,3 +46,9 @@ python-engine/model-cache
 
 # Local engine binaries and models (large files, not tracked in git)
 src-tauri/resources/local-engine/
+
+# Local analysis and release outputs
+graphify-out/
+release-artifacts/
+playwright-report/
+test-results/

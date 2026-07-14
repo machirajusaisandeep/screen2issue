@@ -27,7 +27,7 @@ export function createDiagnosticExport(
 ): DiagnosticExportV1 {
   return {
     schemaVersion: 1,
-    appVersion: '0.1.0',
+    appVersion: '0.2.0',
     generatedAt: new Date().toISOString(),
     runtimeSurface: runtime.surface,
     capabilities: {

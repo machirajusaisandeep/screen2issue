@@ -1,19 +1,39 @@
 # Changelog
 
-All notable changes to Screen2Issue will be documented here.
+All notable changes to Screen2Issue are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versions follow [Semantic Versioning](https://semver.org/).
+## [0.2.0] — 2026-07-14
 
----
+### Added
+
+- System, light, and dark themes with reduced-motion and small-screen support.
+- Sanitized sample-project onboarding and versioned IndexedDB autosave for derived project data.
+- Cancellable processing with retry, elapsed time, partial warnings, and recovery controls.
+- Evidence filters, list/grid layouts, bulk include/exclude, undo, preview, and progressive disclosure.
+- Export completeness checks, live output tabs, GitHub-ready issue Markdown, and clear copy feedback.
+- Typed analyzer and exporter registries, diagnostic export, architecture documentation, and contributor guides.
+- Vitest, Playwright, accessibility coverage, bundle-budget checks, and expanded CI gates.
+
+### Changed
+
+- Simplified the upload screen around one primary action and concise local-first messaging.
+- Redesigned enhancement capabilities and AI data-boundary confirmation.
+- Reworked the macOS installer with a focused branded drag-to-Applications layout.
+- Improved the bundled local-engine packaging and macOS resource resolution.
+
+### Fixed
+
+- Restricted uploads to supported video formats with MIME, extension, size, and decode validation.
+- Fixed desktop video processing by routing extraction through the bundled local engine.
+- Prevented background shadows from bleeding through modal overlays.
+- Improved compact navigation to avoid clipping and horizontal overflow at 768px.
 
 ## [0.1.0] — 2026-05-08
 
 ### Added
-- Local-first video processing: key-frame extraction, browser OCR (tesseract.js), and cursor/click detection — all in-browser with no backend
-- Timeline review: include/exclude frame toggles, per-frame notes, OCR and cursor event editing
-- Optional HAR import with sanitized request summaries and manual sync offset
-- Optional localhost-only Python engine for enhanced OCR, cursor analysis, and English audio transcription
-- AI-ready Markdown report generation with configurable Claude, Gemini, OpenAI, DeepSeek, and Ollama providers
-- ZIP export with `bug-report.md`, `metadata.json`, and extracted frame PNGs
-- Installable PWA with offline app shell support
-- macOS DMG release via Tauri with bundled local engine sidecar
+
+- Local-first video processing with key-frame extraction, browser OCR, and cursor detection.
+- Timeline review with frame inclusion, notes, OCR, and cursor-event editing.
+- Optional HAR import and localhost-only Python enrichment engine.
+- AI-ready Markdown, JSON, and ZIP exports.
+- Installable PWA and macOS DMG distribution.
